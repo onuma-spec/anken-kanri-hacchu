@@ -164,17 +164,17 @@
         <div class="cell empty">—</div>
 
         <div class="cell step">③会社が荷受</div>
-        <div class="cell tool">到着待ち（荷受チェック）で記録</div>
+        <div class="cell tool">到着待ち（荷受チェック）で記録<span class="sub">荷受担当が操作</span></div>
         <div class="cell arrow-cell">→<span class="sub">自動で記録</span></div>
         <div class="cell tool">着荷日</div>
 
-        <div class="cell step">④担当者へ受渡</div>
-        <div class="cell tool">受渡待ち（受渡チェック）で記録</div>
+        <div class="cell step">④担当者が受け取り</div>
+        <div class="cell tool">受渡待ち（受渡チェック）で記録<span class="sub">受け取った担当者本人が操作</span></div>
         <div class="cell arrow-cell">→<span class="sub">自動で記録</span></div>
         <div class="cell tool">受渡日</div>
       </div>
     </div>
-    <p class="step-note">複数人が発注書を発行していても、荷受場に置いた端末で「一覧」の「到着待ち（荷受チェック）」「受渡待ち（受渡チェック）」タブを開けば、届いた荷物がどの発注書のもので誰宛か（担当者名・部署名・納品場所）をその場で確認・記録できます。</p>
+    <p class="step-note">複数人が発注書を発行していても、荷受担当は荷受場に置いた端末で「到着待ち（荷受チェック）」タブを開けば、届いた荷物がどの発注書のもので誰宛か（担当者名・部署名・納品場所）をその場で確認・記録できます。担当者は「受渡待ち（受渡チェック）」タブを見て自分宛ての荷物が届いたことを確認し、荷受場へ受け取りに来た際に自分で記録します。</p>
     <p class="step-note">①のあとは、いつでもhtmlツールのダッシュボードやGoogleスプレッドシート上のハイライトで進捗・要注意（納期超過）を確認できます。</p>
     <p class="step-note">htmlツールは全社共通で配布・データはここに保存されません。スプレッドシートは自社のGoogleアカウント内に作成したものを使います。</p>
   </div>
@@ -225,10 +225,10 @@
 // （コードの保存だけでは、公開中のURLには反映されません）。
 //
 // 発注書の作成・自動転記はこのツール（HTML）から行います。
-// 「到着（会社への荷受）」「受渡（担当者への引き渡し）」の記録は、
-// ツール（HTML）の「一覧」画面の「到着待ち（荷受チェック）」
-// 「受渡待ち（受渡チェック）」タブからワンクリックで行えます。
-// スプレッドシートを直接編集する必要はありません。
+// 「到着（会社への荷受）」の記録は荷受担当が、「受渡（担当者への引き渡し）」の
+// 記録は受け取った担当者本人が、ツール（HTML）の「一覧」画面の
+// 「到着待ち（荷受チェック）」「受渡待ち（受渡チェック）」タブから
+// それぞれワンクリックで行います。スプレッドシートを直接編集する必要はありません。
 //
 // 見積書ツールとは完全に独立した別のスプレッドシート・別のウェブアプリ
 // として運用します（データの自動連携はありません）。
@@ -1519,7 +1519,7 @@ function renderDashboard(){
   // ---- パネル2：受渡待ち（受渡チェック） ----
   html += '<div class="dash-panel'+(currentDashTab==='handover'?' active':'')+'" data-panel="handover">';
   html += '<div class="card"><h2>🤝 受渡待ち（受渡チェック）</h2>';
-  html += '<p class="note">担当者へ引き渡したら検索して「受渡を記録」を押してください。着荷から'+dash.config.staleDays+'日以上経過している行は経過日数を強調表示します。</p>';
+  html += '<p class="note">自分宛ての荷物を受け取りに来たら、検索して「受渡を記録」を押してください。着荷から'+dash.config.staleDays+'日以上経過している行は経過日数を強調表示します。</p>';
   html += '<div class="filter-grid">';
   html += '<div><label class="field-label">検索</label><input type="text" id="hnd-q" value="'+escapeAttr(dashFilterHandover.q)+'" placeholder="取引先名・品名・書類番号・担当者" oninput="onHandoverFilterChange()"></div>';
   html += '</div>';
