@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>発注書 進捗管理ツール</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --text:#1c2331; --muted:#6b7280;
+    --accent:#2563eb; --accent-dark:#1d4ed8; --border:#e2e5ea;
+    --danger:#dc2626; --danger-bg:#fde8e8; --ok:#16a34a; --ok-bg:#e7f7ec;
+    --warn-bg:#fff7e6; --warn-text:#92680a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14181f; --card:#1d232d; --text:#e7ebf1; --muted:#9aa4b2;
+      --accent:#4f8cff; --accent-dark:#3f74e0; --border:#2c3441;
+      --danger:#ef4444; --danger-bg:#3a1f22; --ok:#34d399; --ok-bg:#173226;
+      --warn-bg:#332a12; --warn-text:#e0b84a;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Meiryo","Hiragino Sans",sans-serif;background:var(--bg);color:var(--text);}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px 16px 80px;}
+  .wrap.narrow{max-width:640px;}
+  h1{font-size:1.3rem;margin:0 0 4px;}
+  h2{font-size:1.1rem;margin:0 0 12px;}
+  h3{font-size:0.95rem;margin:0 0 8px;}
+  p.note{color:var(--text);font-size:0.85rem;line-height:1.6;}
+  small.hint{color:var(--muted);font-size:0.78rem;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:14px 18px;font-size:1rem;font-weight:600;cursor:pointer;width:100%;min-height:48px;text-decoration:none;}
+  .btn:active{background:var(--accent-dark);}
+  .btn.secondary{background:transparent;color:var(--accent);border:1.5px solid var(--accent);}
+  .btn.small{width:auto;padding:8px 14px;font-size:0.85rem;min-height:38px;}
+  .btn.danger{background:var(--danger);}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn-row .btn{flex:1;min-width:160px;}
+  input[type=text], input[type=number], input[type=url], input[type=date], select, textarea{
+    width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;
+    background:var(--card);color:var(--text);margin-bottom:8px;
+  }
+  textarea{min-height:60px;font-family:inherit;}
+  label.field-label{display:block;font-size:0.82rem;color:var(--muted);margin-bottom:4px;font-weight:600;}
+  .screen{display:none;}
+  .screen.active{display:block;}
+  .choice-card{display:flex;align-items:center;gap:14px;padding:18px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;cursor:pointer;background:var(--card);}
+  .choice-card:active{border-color:var(--accent);}
+  .choice-card .emoji{font-size:1.8rem;}
+  .choice-card .txt b{display:block;font-size:1.05rem;}
+  .choice-card .txt span{color:var(--muted);font-size:0.85rem;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:0.9rem;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center;}
+  .toast.show{opacity:1;}
+  .toast.sticky{pointer-events:auto;cursor:pointer;}
+  .undo-toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 14px;border-radius:8px;font-size:0.85rem;z-index:101;max-width:92vw;display:none;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;}
+  .undo-toast.show{display:flex;}
+  .undo-toast .btn{width:auto;}
+  .undo-toast .btn.secondary{border-color:var(--bg);color:var(--bg);}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  @media (max-width:520px){ .field-row{grid-template-columns:1fr;} }
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:600;}
+  .badge.ok{background:var(--ok-bg);color:var(--ok);}
+  .badge.warn{background:var(--warn-bg);color:var(--warn-text);}
+  .badge.danger{background:var(--danger-bg);color:var(--danger);}
+  .badge.muted{background:var(--border);color:var(--muted);}
+  .kpi-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;}
+  .kpi-box .num{font-size:1.5rem;font-weight:700;}
+  .kpi-box .label{font-size:0.8rem;color:var(--muted);}
+  table.data-tbl{width:100%;border-collapse:collapse;font-size:0.82rem;}
+  table.data-tbl th, table.data-tbl td{border-bottom:1px solid var(--border);padding:7px 6px;text-align:left;white-space:nowrap;}
+  table.data-tbl td.wrap-cell{white-space:normal;}
+  table.data-tbl th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--card);}
+  .tbl-scroll{overflow-x:auto;max-height:60vh;overflow-y:auto;border:1px solid var(--border);border-radius:10px;}
+  .doc-link{color:var(--accent);cursor:pointer;text-decoration:underline;font-weight:600;}
+  tr.row-danger td{background:var(--danger-bg);}
+  tr.row-danger td:first-child{border-left:4px solid var(--danger);}
+  .warn-banner{background:var(--danger-bg);color:var(--danger);font-weight:700;font-size:0.85rem;padding:8px 12px;border-radius:8px;margin:6px 0;}
+  .filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:end;margin-bottom:10px;}
+  .step-note{font-size:0.78rem;color:var(--muted);margin-top:2px;}
+
+  /* 全体像（3レーン図） */
+  .swimlane{display:grid;grid-template-columns:1.1fr 1fr 0.5fr 1fr;gap:8px 6px;margin-top:10px;min-width:560px;}
+  .swimlane .lane-head{font-size:0.72rem;font-weight:700;color:var(--muted);text-align:center;padding-bottom:6px;border-bottom:2px solid var(--border);}
+  .swimlane .cell{border-radius:8px;padding:8px 10px;font-size:0.78rem;text-align:center;border:1.5px solid var(--border);background:var(--bg);display:flex;flex-direction:column;justify-content:center;}
+  .swimlane .cell.tool{border-color:var(--accent);background:var(--ok-bg);font-weight:600;}
+  .swimlane .cell.empty{border-style:dashed;color:var(--muted);background:transparent;font-weight:400;}
+  .swimlane .cell .sub{display:block;font-weight:400;font-size:0.7rem;color:var(--muted);margin-top:2px;}
+  .swimlane .step{font-weight:700;text-align:left;background:transparent;border:none;padding:8px 4px;}
+  .swimlane .arrow-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.2rem;color:var(--accent);font-weight:700;background:transparent;border:none;padding:0;}
+  .swimlane .arrow-cell .sub{color:var(--accent);}
+
+  /* セットアップ手順 */
+  .setup-steps{padding-left:20px;margin:0;font-size:0.85rem;}
+  .setup-steps > li{margin-bottom:16px;line-height:1.6;}
+  .setup-steps ul{margin-top:6px;padding-left:18px;font-size:0.85rem;color:var(--muted);}
+  .setup-steps ul li{margin-bottom:4px;}
+
+  /* ダッシュボードのタブ切替 */
+  .dash-tabs{display:flex;gap:6px;margin:18px 0 22px;flex-wrap:wrap;}
+  .dash-tab-btn{background:transparent;border:1.5px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:0.85rem;font-weight:600;cursor:pointer;color:var(--accent);}
+  .dash-tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .dash-panel{display:none;}
+  .dash-panel.active{display:block;}
+
+  /* 印刷用書類 */
+  .doc-sheet{background:#fff;color:#111;border:1px solid #ccc;border-radius:8px;padding:28px;}
+  .doc-sheet h2{color:#111;font-size:1.4rem;text-align:center;letter-spacing:0.3em;margin-bottom:18px;}
+  .doc-topline{display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:16px;color:#333;}
+  .doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:16px;}
+  .doc-block b{display:block;font-size:0.78rem;color:#666;margin-bottom:4px;}
+  .doc-block .val{font-size:0.95rem;}
+  .doc-client{font-size:1.15rem;font-weight:700;border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:4px;}
+  table.doc-items{width:100%;border-collapse:collapse;margin:14px 0;font-size:0.88rem;}
+  table.doc-items th, table.doc-items td{border:1px solid #ccc;padding:6px 8px;}
+  table.doc-items th{background:#f2f2f2;text-align:left;}
+  table.doc-items td.num{text-align:right;}
+  .doc-total-box{margin-left:auto;width:280px;font-size:0.9rem;}
+  .doc-total-box .line{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #ccc;}
+  .doc-total-box .line.grand{font-weight:700;font-size:1.05rem;border-bottom:2px solid #111;border-top:2px solid #111;padding:8px 0;}
+  .doc-cond{margin-top:16px;font-size:0.85rem;}
+  .doc-cond .line{display:flex;gap:8px;padding:3px 0;}
+  .doc-cond .line b{width:120px;flex-shrink:0;color:#555;}
+
+  @media print{
+    .no-print{display:none!important;}
+    body{background:#fff;}
+    .wrap{max-width:none;padding:0;}
+    .doc-sheet{border:none;padding:0;}
+  }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="undo-toast" id="undo-toast">
+  <span id="undo-toast-msg"></span>
+  <button class="btn small" id="undo-toast-btn" onclick="performUndo()">元に戻す</button>
+  <button class="btn small secondary" onclick="hideUndoToast()">✕</button>
+</div>
+
+<!-- ============ 接続設定 ============ -->
+<div class="screen active wrap narrow" id="screen-connect">
+  <h1>📦 発注書 進捗管理ツール</h1>
+  <p class="note">発注書の作成・自動転記・進捗（納品）の管理を行う社内ツールです。見積書ツールとは完全に別のスプレッドシート・別のURLを使います。</p>
+
+  <div class="card">
+    <h2>業務の全体像とツールのカバー範囲</h2>
+    <p class="note">発注書に関する一連の業務を上から時系列に並べ、どこをこのツール（htmlツール／Googleスプレッドシート）が担うかを示しています。点線の空箱は、実際の業務行為そのもの（ツールの外）であることを示します。</p>
+    <div class="tbl-scroll" style="max-height:none;">
+      <div class="swimlane">
+        <div class="lane-head">業務内容</div>
+        <div class="lane-head">htmlツール</div>
+        <div class="lane-head"></div>
+        <div class="lane-head">Googleスプレッドシート</div>
+
+        <div class="cell step">①発注書作成</div>
+        <div class="cell tool">フォーム入力</div>
+        <div class="cell arrow-cell">→<span class="sub">自動で記録</span></div>
+        <div class="cell tool">発注書の内容</div>
+
+        <div class="cell step">②発注</div>
+        <div class="cell tool">書類の生成<span class="sub">印刷・PDF化まで（二重発注防止の警告あり）</span></div>
+        <div class="cell arrow-cell"></div>
+        <div class="cell empty">—</div>
+
+        <div class="cell step">③会社が荷受</div>
+        <div class="cell tool">到着待ち（荷受チェック）で記録</div>
+        <div class="cell arrow-cell">→<span class="sub">自動で記録</span></div>
+        <div class="cell tool">着荷日</div>
+
+        <div class="cell step">④担当者へ受渡</div>
+        <div class="cell tool">受渡待ち（受渡チェック）で記録</div>
+        <div class="cell arrow-cell">→<span class="sub">自動で記録</span></div>
+        <div class="cell tool">受渡日</div>
+      </div>
+    </div>
+    <p class="step-note">複数人が発注書を発行していても、荷受場に置いた端末で「一覧」の「到着待ち（荷受チェック）」「受渡待ち（受渡チェック）」タブを開けば、届いた荷物がどの発注書のもので誰宛か（担当者名・部署名・納品場所）をその場で確認・記録できます。</p>
+    <p class="step-note">①のあとは、いつでもhtmlツールのダッシュボードやGoogleスプレッドシート上のハイライトで進捗・要注意（納期超過）を確認できます。</p>
+    <p class="step-note">htmlツールは全社共通で配布・データはここに保存されません。スプレッドシートは自社のGoogleアカウント内に作成したものを使います。</p>
+  </div>
+
+  <div class="card">
+    <h2>①発注書データの保存先を用意する</h2>
+    <p class="note">発注書の集計先となる、Googleスプレッドシート＋GASスクリプトを準備します（社内で最初に1人が行えばOKです）。</p>
+    <ol class="setup-steps">
+      <li>新しいGoogleスプレッドシートを作成する</li>
+      <li>メニュー「拡張機能」→「Apps Script」を開く</li>
+      <li>
+        デフォルトで入っているコードを全部消し、下のコードを貼り付けて保存する（Ctrl+S）
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer;font-weight:600;color:var(--accent);">▶ GASスクリプトのコードを表示・コピーする</summary>
+          <textarea id="gas-code-box" readonly style="width:100%;height:260px;font-family:monospace;font-size:0.75rem;white-space:pre;margin-top:8px;">// ============================================================
+// 案件管理ツール（発注書）- GASテンプレート
+// ============================================================
+// 【使い方】
+// 1. 新しいGoogleスプレッドシートを作成する
+// 2. メニュー「拡張機能」→「Apps Script」を開く
+// 3. デフォルトで入っているコードを全部消し、このファイルの中身を
+//    全部貼り付けて保存する（フロッピーアイコン、またはCtrl+S）
+// 4. 右上の「デプロイ」→「新しいデプロイ」をクリック
+//    - 種類の選択：歯車アイコン→「ウェブアプリ」
+//    - 説明：任意（例：発注書2026）
+//    - 次のユーザーとして実行：自分
+//    - アクセスできるユーザー：全員
+//    →「デプロイ」をクリック
+// 5. 初回のみ権限の承認を求められるので許可する
+//    （「このアプリは Google で確認されていません」と出た場合は
+//     「詳細」→「安全ではないページに移動」で進めて問題ありません。
+//     これはGoogle公式の審査を受けていない個人のスクリプトを
+//     実行する際に必ず表示される、Google側の定型的な確認です。
+//     コードの中身はこのファイルで全文確認できます。
+//     「エラー 401: invalid_client」が表示された場合は、
+//     そのエラー画面を閉じてから、もう一度「アクセスを承認」を
+//     押し直すと解消することがあります）
+// 6. スプレッドシートを開き直すと「設定」「登録リスト」タブが
+//    自動的に作られます。まず「設定」タブに自社名などを入力してください
+//    （自社名は必須、他の項目は未入力でも初期値のまま動きます）。
+//    「登録リスト」タブに部署名候補・担当者一覧（担当者名/電話/メール）を
+//    入力しておくと、発注書作成フォームで選択できるようになります
+// 7. 表示された「ウェブアプリのURL」を、発注書ツール（ホーム画面）の
+//    接続設定に貼り付ける。社内で使う全員が同じURLを使います
+//
+// コードを更新した場合は、既存のデプロイに対して
+// 「デプロイを管理」→「新バージョン」で反映させてください
+// （コードの保存だけでは、公開中のURLには反映されません）。
+//
+// 発注書の作成・自動転記はこのツール（HTML）から行います。
+// 「到着（会社への荷受）」「受渡（担当者への引き渡し）」の記録は、
+// ツール（HTML）の「一覧」画面の「到着待ち（荷受チェック）」
+// 「受渡待ち（受渡チェック）」タブからワンクリックで行えます。
+// スプレッドシートを直接編集する必要はありません。
+//
+// 見積書ツールとは完全に独立した別のスプレッドシート・別のウェブアプリ
+// として運用します（データの自動連携はありません）。
+// ============================================================
+
+const SHEET_CONFIG = &#x27;設定&#x27;;
+const SHEET_LISTS = &#x27;登録リスト&#x27;;
+const SHEET_HEADER = &#x27;発注ヘッダー&#x27;;
+const SHEET_DETAIL = &#x27;発注明細&#x27;;
+
+const HEADER_COLS = [&#x27;書類番号&#x27;, &#x27;発行日&#x27;, &#x27;取引先名&#x27;, &#x27;先方担当者名&#x27;, &#x27;自社名&#x27;, &#x27;部署名&#x27;, &#x27;担当者名&#x27;, &#x27;連絡先&#x27;, &#x27;納品場所&#x27;, &#x27;支払条件&#x27;, &#x27;備考&#x27;, &#x27;フリー項目値&#x27;, &#x27;初回印刷日時&#x27;];
+const DETAIL_COLS = [&#x27;書類番号&#x27;, &#x27;行番号&#x27;, &#x27;品番&#x27;, &#x27;品名&#x27;, &#x27;数量&#x27;, &#x27;単価&#x27;, &#x27;税率&#x27;, &#x27;金額&#x27;, &#x27;納期&#x27;, &#x27;着荷日&#x27;, &#x27;受渡日&#x27;];
+
+const H = {};
+HEADER_COLS.forEach(function (c, i) { H[c] = i; });
+const D = {};
+DETAIL_COLS.forEach(function (c, i) { D[c] = i; });
+
+// [項目, 初期値, 説明]
+const CONFIG_DEFAULTS = [
+  [&#x27;自社名&#x27;, &#x27;&#x27;, &#x27;発注書に印字される発行者名（必須）&#x27;],
+  [&#x27;部署名入力方式&#x27;, &#x27;自由入力&#x27;, &#x27;「自由入力」または「選択式」。選択式の場合は登録リストタブの部署名候補から選びます&#x27;],
+  [&#x27;フリー項目ラベル&#x27;, &#x27;備考2&#x27;, &#x27;⑦の追加項目のラベル名（例：プロジェクトキー）。入力欄は自由入力（過去の入力値を候補表示）です&#x27;],
+  [&#x27;フリー項目印字有無&#x27;, &#x27;印字する&#x27;, &#x27;「印字する」または「印字しない」。社内管理用に記録だけして客先向け書類には出さない場合は「印字しない」&#x27;],
+  [&#x27;書類番号prefix&#x27;, &#x27;P&#x27;, &#x27;例：P-202609-001 のように使われます（見積・発注で別々に設定）&#x27;],
+  [&#x27;デフォルト税率(%)&#x27;, &#x27;10&#x27;, &#x27;明細行の税率欄に入る初期値（行ごとに上書き可）&#x27;],
+  [&#x27;消費税端数処理&#x27;, &#x27;四捨五入&#x27;, &#x27;「切り捨て」「切り上げ」「四捨五入」のいずれか。税率ごとの小計に対して1回だけ適用します&#x27;],
+  [&#x27;支払条件デフォルト値&#x27;, &#x27;&#x27;, &#x27;発注書作成フォームの支払条件欄に自動入力する文言（空欄可。例：納品後月末締め翌月末払い）&#x27;],
+  [&#x27;受渡待ち滞留日数のしきい値&#x27;, &#x27;1&#x27;, &#x27;到着（着荷日）からこの日数以上経過しても担当者へ受渡されていない品目を、「受渡待ち（受渡チェック）」タブで強調表示します&#x27;]
+];
+
+// ---------------- エントリーポイント ----------------
+
+function doGet(e) {
+  try {
+    const action = e.parameter.action;
+    if (action === &#x27;ping&#x27;) return jsonOut({ ok: true });
+    if (action === &#x27;getInitData&#x27;) return jsonOut(getInitData());
+    if (action === &#x27;getDashboardData&#x27;) return jsonOut(getDashboardData());
+    return jsonOut({ ok: false, error: &#x27;unknown action: &#x27; + action });
+  } catch (err) {
+    return jsonOut({ ok: false, error: String(err) });
+  }
+}
+
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    const action = body.action;
+    if (action === &#x27;submitOrder&#x27;) return jsonOut(submitOrder(body));
+    if (action === &#x27;checkPrint&#x27;) return jsonOut(checkPrint(body));
+    if (action === &#x27;markArrived&#x27;) return jsonOut(markArrived(body));
+    if (action === &#x27;markHandedOver&#x27;) return jsonOut(markHandedOver(body));
+    if (action === &#x27;undoMark&#x27;) return jsonOut(undoMark(body));
+    return jsonOut({ ok: false, error: &#x27;unknown action: &#x27; + action });
+  } catch (err) {
+    return jsonOut({ ok: false, error: String(err) });
+  }
+}
+
+function jsonOut(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function onOpen() {
+  ensureSheetsExist();
+  SpreadsheetApp.getUi().createMenu(&#x27;案件管理ツール（発注）&#x27;)
+    .addItem(&#x27;🔄 データ検証・書式を再設定&#x27;, &#x27;reapplyValidation&#x27;)
+    .addToUi();
+}
+
+// ---------------- 初期化 ----------------
+
+function ensureSheetsExist() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureConfigSheet_(ss);
+  ensureListsSheet_(ss);
+  ensureHeaderSheet_(ss);
+  ensureDetailSheet_(ss);
+}
+
+function ensureConfigSheet_(ss) {
+  let sh = ss.getSheetByName(SHEET_CONFIG);
+  if (sh) {
+    syncConfigDefaults_(sh);
+    applyConfigValidation_(sh);
+    return sh;
+  }
+  sh = ss.insertSheet(SHEET_CONFIG);
+  sh.setFrozenRows(2);
+  sh.getRange(1, 1, 1, 3).merge().setValue(&#x27;👇「値」列を入力してください（自社名は必須、他は空欄のままでも初期値で動きます）&#x27;).setFontWeight(&#x27;bold&#x27;).setFontColor(&#x27;#ffffff&#x27;);
+  sh.getRange(1, 1, 1, 3).setBackground(&#x27;#2563eb&#x27;);
+  sh.getRange(2, 1, 1, 3).setValues([[&#x27;項目&#x27;, &#x27;値&#x27;, &#x27;説明&#x27;]]).setFontWeight(&#x27;bold&#x27;);
+  sh.getRange(2, 1, 1, 3).setBackground(&#x27;#e2e5ea&#x27;);
+  sh.getRange(3, 1, CONFIG_DEFAULTS.length, 3).setValues(CONFIG_DEFAULTS);
+  sh.getRange(3, 3, CONFIG_DEFAULTS.length, 1).setFontColor(&#x27;#6b7280&#x27;).setWrap(true);
+  sh.setColumnWidth(1, 160);
+  sh.setColumnWidth(2, 160);
+  sh.setColumnWidth(3, 420);
+  applyConfigValidation_(sh);
+  return sh;
+}
+
+// 既存の「設定」タブに対し、CONFIG_DEFAULTSにあってシートにまだ無い項目だけを
+// 末尾に追記する（コード更新でCONFIG_DEFAULTSに項目が増えた場合の反映用）。
+// 既存の値は一切上書きしない
+function syncConfigDefaults_(sh) {
+  const last = sh.getLastRow();
+  const existing = {};
+  if (last &gt;= 3) {
+    sh.getRange(3, 1, last - 2, 1).getValues().forEach(function (r) {
+      if (r[0]) existing[String(r[0]).trim()] = true;
+    });
+  }
+  const missing = CONFIG_DEFAULTS.filter(function (row) { return !existing[row[0]]; });
+  if (missing.length === 0) return;
+  const startRow = Math.max(last, 2) + 1;
+  sh.getRange(startRow, 1, missing.length, 3).setValues(missing);
+  sh.getRange(startRow, 3, missing.length, 1).setFontColor(&#x27;#6b7280&#x27;).setWrap(true);
+}
+
+// 項目名（列Aの実際のラベル文字列）から行番号を探す。
+// CONFIG_DEFAULTSの配列インデックスをそのまま行番号に使うと、既存シートに
+// 後から項目を追記した際の並び順のズレで誤った行に書式を適用しかねないため、
+// 常にラベル文字列で照合する
+function findConfigRow_(sh, key) {
+  const last = sh.getLastRow();
+  if (last &lt; 3) return -1;
+  const labels = sh.getRange(3, 1, last - 2, 1).getValues();
+  for (let i = 0; i &lt; labels.length; i++) {
+    if (String(labels[i][0]).trim() === key) return i + 3;
+  }
+  return -1;
+}
+
+// 選択式の項目は「値」列にプルダウン（データ検証）を設定し、
+// 誤字での入力ミスを防ぐ
+function applyConfigValidation_(sh) {
+  const CONFIG_CHOICES = {
+    &#x27;部署名入力方式&#x27;: [&#x27;自由入力&#x27;, &#x27;選択式&#x27;],
+    &#x27;フリー項目印字有無&#x27;: [&#x27;印字する&#x27;, &#x27;印字しない&#x27;],
+    &#x27;消費税端数処理&#x27;: [&#x27;切り捨て&#x27;, &#x27;切り上げ&#x27;, &#x27;四捨五入&#x27;]
+  };
+  Object.keys(CONFIG_CHOICES).forEach(function (key) {
+    const rowNum = findConfigRow_(sh, key);
+    if (rowNum === -1) return;
+    const rule = SpreadsheetApp.newDataValidation().requireValueInList(CONFIG_CHOICES[key], true).setAllowInvalid(false).build();
+    sh.getRange(rowNum, 2).setDataValidation(rule);
+  });
+
+  // 数値のみを求める項目：&quot;10%&quot;のような単位付き文字入力をデータ検証で拒否しつつ、
+  // 表示形式（カスタム書式）で単位を自動表示し、単位を手入力する動機自体を減らす
+  const CONFIG_NUMBER_FIELDS = {
+    &#x27;デフォルト税率(%)&#x27;: &#x27;%&#x27;,
+    &#x27;受渡待ち滞留日数のしきい値&#x27;: &#x27;日&#x27;
+  };
+  Object.keys(CONFIG_NUMBER_FIELDS).forEach(function (key) {
+    const rowNum = findConfigRow_(sh, key);
+    if (rowNum === -1) return;
+    const cell = sh.getRange(rowNum, 2);
+    const rule = SpreadsheetApp.newDataValidation().requireNumberGreaterThanOrEqualTo(0).setAllowInvalid(false).build();
+    cell.setDataValidation(rule);
+    cell.setNumberFormat(&#x27;0&quot;&#x27; + CONFIG_NUMBER_FIELDS[key] + &#x27;&quot;&#x27;);
+  });
+}
+
+function ensureListsSheet_(ss) {
+  let sh = ss.getSheetByName(SHEET_LISTS);
+  if (sh) return sh;
+  sh = ss.insertSheet(SHEET_LISTS);
+  sh.setFrozenRows(2);
+  sh.getRange(1, 1, 1, 5).merge().setValue(&#x27;👇 部署名候補・担当者一覧を入力してください（発注書作成フォームの選択肢になります）&#x27;).setFontWeight(&#x27;bold&#x27;).setFontColor(&#x27;#ffffff&#x27;);
+  sh.getRange(1, 1, 1, 5).setBackground(&#x27;#2563eb&#x27;);
+  sh.getRange(2, 1).setValue(&#x27;部署名候補&#x27;).setFontWeight(&#x27;bold&#x27;);
+  sh.getRange(2, 3, 1, 3).setValues([[&#x27;担当者名&#x27;, &#x27;電話&#x27;, &#x27;メール&#x27;]]).setFontWeight(&#x27;bold&#x27;);
+  sh.getRange(2, 1, 1, 5).setBackground(&#x27;#e2e5ea&#x27;);
+  sh.setColumnWidth(1, 160);
+  sh.setColumnWidth(2, 24);
+  sh.setColumnWidth(3, 120);
+  sh.setColumnWidth(4, 120);
+  sh.setColumnWidth(5, 200);
+  return sh;
+}
+
+function ensureHeaderSheet_(ss) {
+  let sh = ss.getSheetByName(SHEET_HEADER);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_HEADER);
+    sh.setFrozenRows(1);
+  }
+  sh.getRange(1, 1, 1, HEADER_COLS.length).setValues([HEADER_COLS]).setFontWeight(&#x27;bold&#x27;);
+  sh.getRange(1, 1, 1, HEADER_COLS.length).setBackground(&#x27;#e2e5ea&#x27;);
+  return sh;
+}
+
+function ensureDetailSheet_(ss) {
+  let sh = ss.getSheetByName(SHEET_DETAIL);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_DETAIL);
+    sh.setFrozenRows(1);
+  }
+  sh.getRange(1, 1, 1, DETAIL_COLS.length).setValues([DETAIL_COLS]).setFontWeight(&#x27;bold&#x27;);
+  sh.getRange(1, 1, 1, DETAIL_COLS.length).setBackground(&#x27;#e2e5ea&#x27;);
+  applyDetailAlertFormat_(sh);
+  return sh;
+}
+
+function colLetter_(colNum1based) {
+  let s = &#x27;&#x27;, n = colNum1based;
+  while (n &gt; 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+// 納期超過（納期が過ぎている＋未着荷）を発注明細シート上でハイライトする。
+// 発注明細は納期・着荷日とも同一シート内にあるため、見積書のような
+// 別シート参照の回避策（参照列）は不要でシンプルに完結する。
+function applyDetailAlertFormat_(sh) {
+  // 固定行数（2000行等）を指定すると、新規作成直後でまだ行数が少ないシートで
+  // 「範囲がシートの最大行数を超えている」エラーになるため、実際の最大行数を使う
+  const lastRow = Math.max(sh.getMaxRows(), 2);
+  const range = sh.getRange(2, 1, lastRow - 1, DETAIL_COLS.length);
+  const dueCol = &#x27;$&#x27; + colLetter_(D[&#x27;納期&#x27;] + 1) + &#x27;2&#x27;;
+  const arrivedCol = &#x27;$&#x27; + colLetter_(D[&#x27;着荷日&#x27;] + 1) + &#x27;2&#x27;;
+  const rule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(&#x27;=AND(&#x27; + dueCol + &#x27;&lt;&gt;&quot;&quot;,&#x27; + dueCol + &#x27;&lt;TODAY(),&#x27; + arrivedCol + &#x27;=&quot;&quot;)&#x27;)
+    .setBackground(&#x27;#fce8e6&#x27;)
+    .setRanges([range])
+    .build();
+  sh.setConditionalFormatRules([rule]);
+}
+
+// ---------------- 設定・登録リストの読み出し ----------------
+
+function getConfigMap_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ensureConfigSheet_(ss);
+  const last = sh.getLastRow();
+  const map = {};
+  if (last &gt;= 3) {
+    const vals = sh.getRange(3, 1, last - 2, 2).getValues();
+    vals.forEach(function (r) { if (r[0]) map[String(r[0]).trim()] = r[1]; });
+  }
+  return map;
+}
+
+function getConfig_() {
+  const m = getConfigMap_();
+  function s(key, def) {
+    const v = m[key];
+    return (v === undefined || v === null || v === &#x27;&#x27;) ? def : String(v);
+  }
+  return {
+    companyName: s(&#x27;自社名&#x27;, &#x27;&#x27;),
+    deptMode: s(&#x27;部署名入力方式&#x27;, &#x27;自由入力&#x27;),
+    freeLabel: s(&#x27;フリー項目ラベル&#x27;, &#x27;備考2&#x27;),
+    freePrint: s(&#x27;フリー項目印字有無&#x27;, &#x27;印字する&#x27;),
+    prefix: s(&#x27;書類番号prefix&#x27;, &#x27;P&#x27;),
+    taxDefault: Number(s(&#x27;デフォルト税率(%)&#x27;, &#x27;10&#x27;)) || 10,
+    roundMode: s(&#x27;消費税端数処理&#x27;, &#x27;四捨五入&#x27;),
+    termsDefault: s(&#x27;支払条件デフォルト値&#x27;, &#x27;&#x27;),
+    staleDays: Number(s(&#x27;受渡待ち滞留日数のしきい値&#x27;, &#x27;1&#x27;)) || 1
+  };
+}
+
+function getLists_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ensureListsSheet_(ss);
+  const last = sh.getLastRow();
+  const depts = [];
+  const staff = [];
+  if (last &gt;= 3) {
+    const vals = sh.getRange(3, 1, last - 2, 5).getValues();
+    vals.forEach(function (r) {
+      if (r[0]) depts.push(String(r[0]));
+      if (r[2]) staff.push({ name: String(r[2]), tel: r[3] ? String(r[3]) : &#x27;&#x27;, email: r[4] ? String(r[4]) : &#x27;&#x27; });
+    });
+  }
+  return { depts: depts, staff: staff };
+}
+
+// ---------------- 作成フォーム用の初期データ ----------------
+
+function getInitData() {
+  ensureSheetsExist();
+  const config = getConfig_();
+  const lists = getLists_();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hSh = ss.getSheetByName(SHEET_HEADER);
+  const hLast = hSh.getLastRow();
+  const clients = {};
+  const freeValues = {};
+  if (hLast &gt;= 2) {
+    const vals = hSh.getRange(2, 1, hLast - 1, HEADER_COLS.length).getValues();
+    vals.forEach(function (r) {
+      const c = r[H[&#x27;取引先名&#x27;]]; if (c) clients[String(c)] = true;
+      const f = r[H[&#x27;フリー項目値&#x27;]]; if (f) freeValues[String(f)] = true;
+    });
+  }
+  return {
+    ok: true,
+    config: config,
+    depts: lists.depts,
+    staff: lists.staff,
+    clients: Object.keys(clients).sort(),
+    freeValues: Object.keys(freeValues).sort()
+  };
+}
+
+// ---------------- 書類番号の採番 ----------------
+
+function generateDocNo_(prefix) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(SHEET_HEADER);
+  const tz = Session.getScriptTimeZone() || &#x27;Asia/Tokyo&#x27;;
+  const ym = Utilities.formatDate(new Date(), tz, &#x27;yyyyMM&#x27;);
+  const base = prefix + &#x27;-&#x27; + ym + &#x27;-&#x27;;
+  let maxSeq = 0;
+  const last = sh.getLastRow();
+  if (last &gt;= 2) {
+    const vals = sh.getRange(2, H[&#x27;書類番号&#x27;] + 1, last - 1, 1).getValues();
+    vals.forEach(function (r) {
+      const v = String(r[0] || &#x27;&#x27;);
+      if (v.indexOf(base) === 0) {
+        const seq = parseInt(v.slice(base.length), 10);
+        if (!isNaN(seq) &amp;&amp; seq &gt; maxSeq) maxSeq = seq;
+      }
+    });
+  }
+  const next = maxSeq + 1;
+  return base + (&#x27;000&#x27; + next).slice(-3);
+}
+
+function parseDate_(str) {
+  if (!str) return &#x27;&#x27;;
+  const parts = String(str).split(&#x27;-&#x27;);
+  if (parts.length !== 3) return &#x27;&#x27;;
+  const y = Number(parts[0]), m = Number(parts[1]), d = Number(parts[2]);
+  if (!y || !m || !d) return &#x27;&#x27;;
+  return new Date(y, m - 1, d);
+}
+
+// ---------------- 発注書の登録（自動転記） ----------------
+
+// body = {
+//   action:&#x27;submitOrder&#x27;, client, clientContact, dept, staff, deliveryPlace, terms, memo, freeValue,
+//   items:[{pin, name, qty, unitPrice, taxRate, dueDate, memo}, ...]
+// }
+function submitOrder(body) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    ensureSheetsExist();
+    const config = getConfig_();
+    const lists = getLists_();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hSh = ss.getSheetByName(SHEET_HEADER);
+    const dSh = ss.getSheetByName(SHEET_DETAIL);
+    const tz = Session.getScriptTimeZone() || &#x27;Asia/Tokyo&#x27;;
+
+    const docNo = generateDocNo_(config.prefix);
+    const now = new Date();
+
+    let contact = &#x27;&#x27;;
+    const staffMatch = lists.staff.filter(function (s) { return s.name === body.staff; })[0];
+    if (staffMatch) contact = [staffMatch.tel, staffMatch.email].filter(Boolean).join(&#x27; / &#x27;);
+
+    const headerRow = [];
+    headerRow[H[&#x27;書類番号&#x27;]] = docNo;
+    headerRow[H[&#x27;発行日&#x27;]] = now;
+    headerRow[H[&#x27;取引先名&#x27;]] = body.client || &#x27;&#x27;;
+    headerRow[H[&#x27;先方担当者名&#x27;]] = body.clientContact || &#x27;&#x27;;
+    headerRow[H[&#x27;自社名&#x27;]] = config.companyName;
+    headerRow[H[&#x27;部署名&#x27;]] = body.dept || &#x27;&#x27;;
+    headerRow[H[&#x27;担当者名&#x27;]] = body.staff || &#x27;&#x27;;
+    headerRow[H[&#x27;連絡先&#x27;]] = contact;
+    headerRow[H[&#x27;納品場所&#x27;]] = body.deliveryPlace || &#x27;&#x27;;
+    headerRow[H[&#x27;支払条件&#x27;]] = body.terms || &#x27;&#x27;;
+    headerRow[H[&#x27;備考&#x27;]] = body.memo || &#x27;&#x27;;
+    headerRow[H[&#x27;フリー項目値&#x27;]] = body.freeValue || &#x27;&#x27;;
+    headerRow[H[&#x27;初回印刷日時&#x27;]] = &#x27;&#x27;;
+
+    hSh.getRange(hSh.getLastRow() + 1, 1, 1, HEADER_COLS.length).setValues([headerRow]);
+    const hRowNum = hSh.getLastRow();
+    hSh.getRange(hRowNum, H[&#x27;発行日&#x27;] + 1).setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
+
+    const items = body.items || [];
+    const rows = items.map(function (it, i) {
+      const qty = Number(it.qty) || 0;
+      const price = Number(it.unitPrice) || 0;
+      const amount = qty * price;
+      const row = [];
+      row[D[&#x27;書類番号&#x27;]] = docNo;
+      row[D[&#x27;行番号&#x27;]] = i + 1;
+      row[D[&#x27;品番&#x27;]] = it.pin || &#x27;&#x27;;
+      row[D[&#x27;品名&#x27;]] = it.name || &#x27;&#x27;;
+      row[D[&#x27;数量&#x27;]] = qty;
+      row[D[&#x27;単価&#x27;]] = price;
+      row[D[&#x27;税率&#x27;]] = Number(it.taxRate) || 0;
+      row[D[&#x27;金額&#x27;]] = amount;
+      row[D[&#x27;納期&#x27;]] = parseDate_(it.dueDate);
+      row[D[&#x27;着荷日&#x27;]] = &#x27;&#x27;;
+      row[D[&#x27;受渡日&#x27;]] = &#x27;&#x27;;
+      return row;
+    });
+
+    if (rows.length &gt; 0) {
+      const startRow = dSh.getLastRow() + 1;
+      dSh.getRange(startRow, 1, rows.length, DETAIL_COLS.length).setValues(rows);
+      applyDetailValidation_(dSh, startRow, rows.length);
+    }
+
+    return { ok: true, docNo: docNo, issueDate: Utilities.formatDate(now, tz, &#x27;yyyy-MM-dd&#x27;), spreadsheetUrl: ss.getUrl() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function applyDetailValidation_(sh, startRow, numRows) {
+  sh.getRange(startRow, D[&#x27;納期&#x27;] + 1, numRows, 1).setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
+  sh.getRange(startRow, D[&#x27;着荷日&#x27;] + 1, numRows, 1).setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
+  sh.getRange(startRow, D[&#x27;受渡日&#x27;] + 1, numRows, 1).setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
+}
+
+// ---------------- 二重発注防止（初回印刷日時の記録） ----------------
+
+// body = { action:&#x27;checkPrint&#x27;, docNo:&#x27;P-202609-001&#x27; }
+// 初回：印刷日時を記録して { alreadyPrinted:false } を返す
+// 2回目以降：記録済みの日時を上書きせず { alreadyPrinted:true, printedAt } を返す
+function checkPrint(body) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hSh = ss.getSheetByName(SHEET_HEADER);
+    const tz = Session.getScriptTimeZone() || &#x27;Asia/Tokyo&#x27;;
+    const last = hSh.getLastRow();
+    if (last &lt; 2) return { ok: false, error: &#x27;書類が見つかりません&#x27; };
+    const vals = hSh.getRange(2, 1, last - 1, HEADER_COLS.length).getValues();
+    for (let i = 0; i &lt; vals.length; i++) {
+      if (vals[i][H[&#x27;書類番号&#x27;]] === body.docNo) {
+        const rowNum = i + 2;
+        const existing = vals[i][H[&#x27;初回印刷日時&#x27;]];
+        if (existing) {
+          return { ok: true, alreadyPrinted: true, printedAt: Utilities.formatDate(existing, tz, &#x27;yyyy-MM-dd HH:mm&#x27;) };
+        }
+        const now = new Date();
+        const cell = hSh.getRange(rowNum, H[&#x27;初回印刷日時&#x27;] + 1);
+        cell.setValue(now);
+        cell.setNumberFormat(&#x27;yyyy-mm-dd hh:mm&#x27;);
+        return { ok: true, alreadyPrinted: false };
+      }
+    }
+    return { ok: false, error: &#x27;書類が見つかりません&#x27; };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ---------------- 荷受チェック（到着・受渡の記録） ----------------
+
+// 書類番号＋行番号で発注明細シート上の該当行を探す
+function findDetailRow_(dSh, docNo, no) {
+  const last = dSh.getLastRow();
+  if (last &lt; 2) return -1;
+  const vals = dSh.getRange(2, 1, last - 1, DETAIL_COLS.length).getValues();
+  for (let i = 0; i &lt; vals.length; i++) {
+    if (String(vals[i][D[&#x27;書類番号&#x27;]]) === String(docNo) &amp;&amp; Number(vals[i][D[&#x27;行番号&#x27;]]) === Number(no)) {
+      return i + 2;
+    }
+  }
+  return -1;
+}
+
+// body = { action:&#x27;markArrived&#x27;, docNo, no }
+// 会社（荷受場）への到着を記録する。既に記録済みの場合は上書きしない
+function markArrived(body) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const dSh = ss.getSheetByName(SHEET_DETAIL);
+    const rowNum = findDetailRow_(dSh, body.docNo, body.no);
+    if (rowNum === -1) return { ok: false, error: &#x27;品目が見つかりません&#x27; };
+    const tz = Session.getScriptTimeZone() || &#x27;Asia/Tokyo&#x27;;
+    const cell = dSh.getRange(rowNum, D[&#x27;着荷日&#x27;] + 1);
+    if (cell.getValue()) {
+      return { ok: true, already: true, date: fmtDate_(cell.getValue(), tz) };
+    }
+    const now = new Date();
+    cell.setValue(now);
+    cell.setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
+    return { ok: true, date: Utilities.formatDate(now, tz, &#x27;yyyy-MM-dd&#x27;) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// body = { action:&#x27;markHandedOver&#x27;, docNo, no }
+// 担当者への受渡を記録する。この操作は「受渡待ち（受渡チェック）」タブからのみ
+// 呼び出され、そのタブは着荷日が記録済みの品目しか表示しないため、
+// 着荷日が未記録のまま呼ばれることは想定していない
+function markHandedOver(body) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const dSh = ss.getSheetByName(SHEET_DETAIL);
+    const rowNum = findDetailRow_(dSh, body.docNo, body.no);
+    if (rowNum === -1) return { ok: false, error: &#x27;品目が見つかりません&#x27; };
+    const tz = Session.getScriptTimeZone() || &#x27;Asia/Tokyo&#x27;;
+    const handedCell = dSh.getRange(rowNum, D[&#x27;受渡日&#x27;] + 1);
+    if (handedCell.getValue()) {
+      return { ok: true, already: true, date: fmtDate_(handedCell.getValue(), tz) };
+    }
+    const now = new Date();
+    handedCell.setValue(now);
+    handedCell.setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
+    return { ok: true, date: Utilities.formatDate(now, tz, &#x27;yyyy-MM-dd&#x27;) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// body = { action:&#x27;undoMark&#x27;, docNo, no, field:&#x27;着荷日&#x27;|&#x27;受渡日&#x27; }
+// 直前に記録した到着・受渡を取り消す（該当セルを空欄に戻す）
+function undoMark(body) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const dSh = ss.getSheetByName(SHEET_DETAIL);
+    const rowNum = findDetailRow_(dSh, body.docNo, body.no);
+    if (rowNum === -1) return { ok: false, error: &#x27;品目が見つかりません&#x27; };
+    if (D[body.field] === undefined) return { ok: false, error: &#x27;不正な項目です&#x27; };
+    dSh.getRange(rowNum, D[body.field] + 1).setValue(&#x27;&#x27;);
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// 手作業で行を追加した等の理由で日付書式・条件付き書式が
+// 崩れた場合に、既存データ全体へ再適用するためのメニュー用関数
+function reapplyValidation() {
+  ensureSheetsExist();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const cSh = ss.getSheetByName(SHEET_CONFIG);
+  if (cSh) applyConfigValidation_(cSh);
+  const hSh = ss.getSheetByName(SHEET_HEADER);
+  const dSh = ss.getSheetByName(SHEET_DETAIL);
+  const hLast = hSh.getLastRow();
+  if (hLast &gt;= 2) {
+    hSh.getRange(2, H[&#x27;発行日&#x27;] + 1, hLast - 1, 1).setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
+    hSh.getRange(2, H[&#x27;初回印刷日時&#x27;] + 1, hLast - 1, 1).setNumberFormat(&#x27;yyyy-mm-dd hh:mm&#x27;);
+  }
+  const dLast = dSh.getLastRow();
+  if (dLast &gt;= 2) applyDetailValidation_(dSh, 2, dLast - 1);
+  applyDetailAlertFormat_(dSh);
+  SpreadsheetApp.getUi().alert(&#x27;データ検証・書式を再設定しました。&#x27;);
+}
+
+// ---------------- ダッシュボード用データ ----------------
+
+function getDashboardData() {
+  ensureSheetsExist();
+  const config = getConfig_();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tz = Session.getScriptTimeZone() || &#x27;Asia/Tokyo&#x27;;
+  const hSh = ss.getSheetByName(SHEET_HEADER);
+  const dSh = ss.getSheetByName(SHEET_DETAIL);
+
+  const hLast = hSh.getLastRow();
+  const headers = [];
+  if (hLast &gt;= 2) {
+    const vals = hSh.getRange(2, 1, hLast - 1, HEADER_COLS.length).getValues();
+    vals.forEach(function (r) {
+      const docNo = r[H[&#x27;書類番号&#x27;]];
+      if (!docNo) return;
+      headers.push({
+        docNo: docNo,
+        issueDate: fmtDate_(r[H[&#x27;発行日&#x27;]], tz),
+        client: r[H[&#x27;取引先名&#x27;]] || &#x27;&#x27;,
+        clientContact: r[H[&#x27;先方担当者名&#x27;]] || &#x27;&#x27;,
+        company: r[H[&#x27;自社名&#x27;]] || &#x27;&#x27;,
+        dept: r[H[&#x27;部署名&#x27;]] || &#x27;&#x27;,
+        staff: r[H[&#x27;担当者名&#x27;]] || &#x27;&#x27;,
+        contact: r[H[&#x27;連絡先&#x27;]] || &#x27;&#x27;,
+        deliveryPlace: r[H[&#x27;納品場所&#x27;]] || &#x27;&#x27;,
+        terms: r[H[&#x27;支払条件&#x27;]] || &#x27;&#x27;,
+        memo: r[H[&#x27;備考&#x27;]] || &#x27;&#x27;,
+        freeValue: r[H[&#x27;フリー項目値&#x27;]] || &#x27;&#x27;
+      });
+    });
+  }
+
+  const dLast = dSh.getLastRow();
+  const details = [];
+  if (dLast &gt;= 2) {
+    const vals = dSh.getRange(2, 1, dLast - 1, DETAIL_COLS.length).getValues();
+    vals.forEach(function (r) {
+      const docNo = r[D[&#x27;書類番号&#x27;]];
+      if (!docNo) return;
+      details.push({
+        docNo: docNo,
+        no: r[D[&#x27;行番号&#x27;]],
+        pin: r[D[&#x27;品番&#x27;]] || &#x27;&#x27;,
+        name: r[D[&#x27;品名&#x27;]] || &#x27;&#x27;,
+        qty: Number(r[D[&#x27;数量&#x27;]]) || 0,
+        unitPrice: Number(r[D[&#x27;単価&#x27;]]) || 0,
+        taxRate: Number(r[D[&#x27;税率&#x27;]]) || 0,
+        amount: Number(r[D[&#x27;金額&#x27;]]) || 0,
+        dueDate: fmtDate_(r[D[&#x27;納期&#x27;]], tz),
+        arrivedDate: fmtDate_(r[D[&#x27;着荷日&#x27;]], tz),
+        handedDate: fmtDate_(r[D[&#x27;受渡日&#x27;]], tz)
+      });
+    });
+  }
+
+  return { ok: true, config: config, headers: headers, details: details };
+}
+
+function fmtDate_(v, tz) {
+  if (!v) return &#x27;&#x27;;
+  if (Object.prototype.toString.call(v) === &#x27;[object Date]&#x27;) {
+    return Utilities.formatDate(v, tz, &#x27;yyyy-MM-dd&#x27;);
+  }
+  return String(v);
+}
+</textarea>
+          <button type="button" class="btn secondary small" onclick="copyGasCode()">コードをコピー</button>
+        </details>
+      </li>
+      <li>
+        右上の「デプロイ」→「新しいデプロイ」をクリック
+        <ul>
+          <li>種類の選択：歯車アイコン→「ウェブアプリ」</li>
+          <li>説明：任意（例：発注書2026）</li>
+          <li>次のユーザーとして実行：自分</li>
+          <li>アクセスできるユーザー：全員</li>
+        </ul>
+        →「デプロイ」をクリック
+      </li>
+      <li>
+        初回のみ権限の承認を求められるので許可する
+        <p class="note">「このアプリは Google で確認されていません」と出た場合は「詳細」→「安全ではないページに移動」で進めて問題ありません。これはGoogle公式の審査を受けていない個人のスクリプトを実行する際に必ず表示される、Google側の定型的な確認です。コードの中身は上記で全文確認できます。「エラー 401: invalid_client」が表示された場合は、そのエラー画面を閉じてから、もう一度「アクセスを承認」を押し直すと解消することがあります。</p>
+      </li>
+      <li>スプレッドシートを開き直す（開いたままの場合はブラウザをリロードする）と、メニューに「案件管理ツール（発注）」が追加され、「設定」「登録リスト」「発注ヘッダー」「発注明細」の4タブが自動的に作られます（このうち入力が必要なのは「設定」「登録リスト」の2つだけです）。「設定」タブに自社名を入力する（必須）。「登録リスト」タブに部署名候補・担当者一覧を入力しておくと作成フォームで選択できます</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>②接続を確認する</h2>
+    <p class="note">手順④でデプロイが完了すると、「ウェブアプリ」というラベルの付いたURLが表示された画面が出ます。その右側にあるコピーアイコンをクリックしてURLをコピーし、下の欄に貼り付けてください。</p>
+    <p class="note">その画面を閉じてしまった場合は、スプレッドシートのメニュー「拡張機能」→「Apps Script」を開き直し→右上の「デプロイ」→「デプロイを管理」を開くと、同じURLをもう一度確認できます。</p>
+    <p class="note">URLを下の欄に貼り付けたら、「接続テスト」ボタンを押してください。</p>
+    <label class="field-label">ウェブアプリURL</label>
+    <input type="url" id="input-gas-url" placeholder="https://script.google.com/macros/s/xxxx/exec">
+    <p class="step-note" id="connect-status"></p>
+    <button class="btn" onclick="testConnection()">接続テスト</button>
+  </div>
+</div>
+
+<!-- ============ ホーム ============ -->
+<div class="screen wrap narrow" id="screen-home">
+  <h1>📦 発注書 進捗管理ツール</h1>
+  <p class="note" id="home-info"></p>
+  <div class="choice-card" onclick="openCreate()">
+    <div class="emoji">🆕</div>
+    <div class="txt"><b>新規発注書を作成する</b><span>フォーム入力→自動でスプレッドシートへ記録・印刷用画面を表示</span></div>
+  </div>
+  <div class="choice-card" onclick="openDashboard()">
+    <div class="emoji">📊</div>
+    <div class="txt"><b>一覧</b><span>到着待ち・受渡待ち・納期遅延一覧を確認。書類番号から再印刷・複製も可能</span></div>
+  </div>
+  <div class="choice-card" onclick="showScreen('screen-connect')">
+    <div class="emoji">⚙️</div>
+    <div class="txt"><b>接続設定を変更</b><span>別のスプレッドシート（URL）に切り替える</span></div>
+  </div>
+</div>
+
+<!-- ============ 作成フォーム ============ -->
+<div class="screen wrap" id="screen-create">
+  <h1>🆕 新規発注書の作成</h1>
+  <p class="note">「この内容で発注書を作成する」を押すと、書類番号が自動で採番され、内容がスプレッドシート「発注ヘッダー」「発注明細」に自動で追記されます。書類番号は送信時に確定するため、それまでは表示されません。</p>
+
+  <div class="card">
+    <h2>宛先・条件</h2>
+    <div class="field-row">
+      <div>
+        <label class="field-label">取引先名 <span style="color:var(--danger)">必須</span></label>
+        <input type="text" id="f-client" list="dl-clients" placeholder="株式会社〇〇">
+        <datalist id="dl-clients"></datalist>
+      </div>
+      <div>
+        <label class="field-label">先方担当者名</label>
+        <input type="text" id="f-clientContact" placeholder="◯◯ 様">
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        <label class="field-label">納品場所</label>
+        <input type="text" id="f-deliveryPlace" placeholder="例：本社倉庫">
+      </div>
+      <div>
+        <label class="field-label">支払条件</label>
+        <input type="text" id="f-terms" placeholder="例：納品後月末締め翌月末払い">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>発行者情報</h2>
+    <div class="field-row">
+      <div>
+        <label class="field-label">自社名</label>
+        <input type="text" id="f-company" readonly>
+      </div>
+      <div>
+        <label class="field-label">部署名</label>
+        <input type="text" id="f-dept-text" placeholder="部署名を入力">
+        <select id="f-dept-select" style="display:none"></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div>
+        <label class="field-label">担当者名</label>
+        <select id="f-staff" onchange="onStaffChange()"><option value="">選択してください</option></select>
+        <p class="step-note" id="staff-empty-note" style="display:none">登録リストタブに担当者が未登録です。先にスプレッドシート側で登録してください。</p>
+      </div>
+      <div>
+        <label class="field-label">連絡先（自動表示）</label>
+        <input type="text" id="f-contact" readonly>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>明細</h2>
+    <div class="tbl-scroll" style="max-height:none;">
+      <table class="data-tbl" id="detail-table">
+        <thead><tr>
+          <th>品番</th><th>品名</th><th>数量</th><th>単価</th><th>税率(%)</th><th>納期</th><th>金額</th><th></th>
+        </tr></thead>
+        <tbody id="detail-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn secondary small" style="margin-top:8px;" onclick="addDetailRow()">＋ 行を追加</button>
+    <div class="doc-total-box" style="margin-top:14px;color:var(--text);width:100%;max-width:320px;" id="form-total-box"></div>
+  </div>
+
+  <div class="card">
+    <h2>備考</h2>
+    <label class="field-label">備考</label>
+    <textarea id="f-memo" placeholder="自由記述"></textarea>
+    <label class="field-label" id="f-free-label">フリー項目</label>
+    <input type="text" id="f-free-text" list="dl-free">
+    <datalist id="dl-free"></datalist>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn secondary" onclick="showScreen('screen-home')">戻る</button>
+    <button class="btn" id="submit-btn" onclick="submitOrder()">この内容で発注書を作成する</button>
+  </div>
+</div>
+
+<!-- ============ 完了・印刷画面 ============ -->
+<div class="screen wrap" id="screen-print">
+  <div class="no-print">
+    <h1 id="print-title">✅ 発注書を作成しました</h1>
+    <div class="btn-row" style="margin-bottom:14px;">
+      <button class="btn" onclick="checkAndPrint()">🖨️ 印刷する</button>
+      <button class="btn secondary" onclick="duplicateFromRecord()">🔁 この内容を複製して新規作成</button>
+      <button class="btn secondary" onclick="backFromPrint()">戻る</button>
+      <button class="btn secondary" onclick="openCreate()">🆕 続けて別の発注書を作成</button>
+    </div>
+  </div>
+  <div class="doc-sheet" id="doc-sheet"></div>
+</div>
+
+<!-- ============ ダッシュボード ============ -->
+<div class="screen wrap" id="screen-dashboard">
+  <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h1>📊 一覧</h1>
+    <div class="btn-row" style="width:auto;">
+      <button class="btn secondary small" onclick="openDashboard()">🔄 更新</button>
+      <button class="btn secondary small" onclick="showScreen('screen-home')">🏠 ホームへ</button>
+    </div>
+  </div>
+  <div id="dash-content"><p class="note">読み込み中...</p></div>
+</div>
+
+<div class="no-print wrap" style="padding-top:0;">
+  <p class="note">本ツールは自由にご利用いただけます。利用により生じたいかなる損害についても、作成者は一切の責任を負いません。自己責任でご利用ください。</p>
+  <p class="note">本ツールは「VS Code × Claude Code」との対話を通じて作成しています。</p>
+</div>
+
+<script>
+// ================== 状態 ==================
+let state = { gasUrl:'', config:null, depts:[], staff:[], clients:[], freeValues:[] };
+let form = { items: [] };
+let dash = null; // { config, headers, details }
+let dashFilter = { staff:'', from:'', to:'', status:'', q:'' };
+let dashFilterArrival = { q:'' };  // 到着待ち（荷受チェック）タブ用
+let dashFilterHandover = { q:'' }; // 受渡待ち（受渡チェック）タブ用
+let dashFilterAlerts = { staff:'' }; // 納期遅延一覧タブ用
+let currentDashTab = 'arrival';
+let lastAction = null; // 直前の到着・受渡記録（取り消し用） { type, docNo, no }
+let printReturnScreen = 'screen-home';
+let lastPrintRecord = null;
+
+// ================== 共通ユーティリティ ==================
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+let toastTimer = null;
+function toast(msg, sticky){
+  const t = document.getElementById('toast');
+  clearTimeout(toastTimer);
+  t.textContent = msg + (sticky ? '（タップして閉じる）' : '');
+  t.classList.add('show');
+  t.classList.toggle('sticky', !!sticky);
+  if(sticky){
+    t.onclick = function(){ t.classList.remove('show'); };
+    return;
+  }
+  t.onclick = null;
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+async function gasGet(params){
+  const usp = new URLSearchParams(params);
+  const res = await fetch(state.gasUrl + '?' + usp.toString());
+  return res.json();
+}
+async function gasPost(body){
+  const res = await fetch(state.gasUrl, {
+    method:'POST',
+    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+function formatYen(n){
+  return Math.round(Number(n)||0).toLocaleString('ja-JP') + '円';
+}
+// 送信成功のたびに候補配列へその場で追加する（次にgetInitDataし直すまで
+// 待たなくても、同じセッション内なら直後の複製・新規作成で候補に出るようにする）
+function addCandidate(arr, val){
+  if(!val) return;
+  if(arr.indexOf(val) === -1){
+    arr.push(val);
+    arr.sort();
+  }
+}
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function daysBetween(fromStr, toStr){
+  return Math.floor((new Date(toStr) - new Date(fromStr)) / 86400000);
+}
+function applyRound(val, mode){
+  if(mode==='切り捨て') return Math.floor(val);
+  if(mode==='切り上げ') return Math.ceil(val);
+  return Math.round(val);
+}
+function computeTotals(items, roundMode){
+  const groups = {};
+  items.forEach(function(it){
+    const rate = Number(it.taxRate)||0;
+    const amt = (Number(it.qty)||0) * (Number(it.unitPrice)||0);
+    groups[rate] = (groups[rate]||0) + amt;
+  });
+  let subtotal=0, taxTotal=0;
+  const breakdown = Object.keys(groups).map(function(rateStr){
+    const rate = Number(rateStr);
+    const sub = groups[rateStr];
+    const tax = applyRound(sub * rate / 100, roundMode);
+    subtotal += sub; taxTotal += tax;
+    return { rate:rate, sub:sub, tax:tax };
+  }).sort(function(a,b){ return a.rate-b.rate; });
+  return { breakdown:breakdown, subtotal:subtotal, taxTotal:taxTotal, total: subtotal+taxTotal };
+}
+function statusOf(d){
+  if(d.handedDate) return '受渡済み';
+  if(d.arrivedDate) return '受渡待ち';
+  return '到着待ち';
+}
+function statusBadge(status){
+  const cls = status==='受渡済み' ? 'ok' : status==='受渡待ち' ? 'warn' : status==='納期超過' ? 'danger' : 'muted';
+  return '<span class="badge '+cls+'">'+status+'</span>';
+}
+
+// ================== 起動 ==================
+window.addEventListener('DOMContentLoaded', init);
+async function init(){
+  const saved = localStorage.getItem('hachu_gas_url');
+  if(saved){
+    document.getElementById('input-gas-url').value = saved;
+    state.gasUrl = saved;
+    await loadInitData(true);
+  } else {
+    showScreen('screen-connect');
+  }
+}
+async function testConnection(){
+  const url = document.getElementById('input-gas-url').value.trim();
+  const statusEl = document.getElementById('connect-status');
+  if(!url){ statusEl.textContent = 'URLを入力してください。'; return; }
+  statusEl.textContent = '接続確認中...';
+  state.gasUrl = url;
+  try{
+    const res = await gasGet({ action:'ping' });
+    if(res.ok){
+      localStorage.setItem('hachu_gas_url', url);
+      statusEl.textContent = '✅ 接続できました。';
+      await loadInitData(false);
+    } else {
+      statusEl.textContent = '接続できませんでした：' + (res.error||'');
+    }
+  }catch(err){
+    statusEl.textContent = '接続エラー：URL・公開設定（アクセスできるユーザー：全員）をご確認ください。';
+  }
+}
+async function loadInitData(silent){
+  try{
+    const res = await gasGet({ action:'getInitData' });
+    if(res.ok){
+      state.config = res.config;
+      state.depts = res.depts;
+      state.staff = res.staff;
+      state.clients = res.clients;
+      state.freeValues = res.freeValues;
+      renderHomeInfo();
+      showScreen('screen-home');
+    } else {
+      if(!silent) toast('取得に失敗しました：' + (res.error||''), true);
+      showScreen('screen-connect');
+    }
+  }catch(err){
+    if(!silent) toast('接続エラーが発生しました。', true);
+    showScreen('screen-connect');
+  }
+}
+function renderHomeInfo(){
+  const c = state.config;
+  if(!c.companyName){
+    document.getElementById('home-info').innerHTML = '⚠️ スプレッドシートの「設定」タブに自社名が未入力です。発注書作成前に入力してください。';
+  } else {
+    document.getElementById('home-info').textContent = '接続先：' + c.companyName;
+  }
+}
+
+// ================== 作成フォーム ==================
+function openCreate(){
+  form.items = [];
+  document.getElementById('f-client').value = '';
+  document.getElementById('f-clientContact').value = '';
+  document.getElementById('f-deliveryPlace').value = '';
+  document.getElementById('f-terms').value = state.config.termsDefault || '';
+  document.getElementById('f-memo').value = '';
+  document.getElementById('f-company').value = state.config.companyName || '';
+
+  document.getElementById('dl-clients').innerHTML = state.clients.map(function(c){ return '<option value="'+escapeHtml(c)+'">'; }).join('');
+
+  const deptText = document.getElementById('f-dept-text');
+  const deptSelect = document.getElementById('f-dept-select');
+  if(state.config.deptMode === '選択式' && state.depts.length > 0){
+    deptText.style.display = 'none';
+    deptSelect.style.display = 'block';
+    deptSelect.innerHTML = '<option value="">選択してください</option>' + state.depts.map(function(d){ return '<option value="'+escapeHtml(d)+'">'+escapeHtml(d)+'</option>'; }).join('');
+  } else {
+    deptText.style.display = 'block';
+    deptSelect.style.display = 'none';
+    deptText.value = '';
+  }
+
+  const staffSel = document.getElementById('f-staff');
+  staffSel.innerHTML = '<option value="">選択してください</option>' + state.staff.map(function(s){ return '<option value="'+escapeHtml(s.name)+'">'+escapeHtml(s.name)+'</option>'; }).join('');
+  document.getElementById('staff-empty-note').style.display = state.staff.length===0 ? 'block' : 'none';
+  document.getElementById('f-contact').value = '';
+
+  document.getElementById('f-free-label').textContent = state.config.freeLabel || 'フリー項目';
+  document.getElementById('dl-free').innerHTML = state.freeValues.map(function(v){ return '<option value="'+escapeHtml(v)+'">'; }).join('');
+  document.getElementById('f-free-text').value = '';
+
+  addDetailRow();
+  renderDetailTable();
+  showScreen('screen-create');
+}
+function onStaffChange(){
+  const name = document.getElementById('f-staff').value;
+  const s = state.staff.filter(function(x){ return x.name===name; })[0];
+  document.getElementById('f-contact').value = s ? [s.tel, s.email].filter(Boolean).join(' / ') : '';
+}
+function addDetailRow(){
+  form.items.push({ pin:'', name:'', qty:1, unitPrice:0, taxRate: state.config.taxDefault, dueDate:'' });
+  renderDetailTable();
+}
+function removeDetailRow(i){
+  form.items.splice(i,1);
+  renderDetailTable();
+}
+function updateDetailField(i, key, val){
+  form.items[i][key] = val;
+  const it = form.items[i];
+  const amount = (Number(it.qty)||0) * (Number(it.unitPrice)||0);
+  const cell = document.getElementById('row-amount-'+i);
+  if(cell) cell.textContent = formatYen(amount);
+  renderTotalsOnly();
+}
+function renderDetailTable(){
+  const tbody = document.getElementById('detail-tbody');
+  tbody.innerHTML = form.items.map(function(it, i){
+    const amount = (Number(it.qty)||0) * (Number(it.unitPrice)||0);
+    return '<tr>'
+      + '<td><input type="text" style="margin:0;min-width:80px;" value="'+escapeHtml(it.pin)+'" oninput="updateDetailField('+i+',\'pin\',this.value)"></td>'
+      + '<td><input type="text" style="margin:0;min-width:140px;" value="'+escapeHtml(it.name)+'" oninput="updateDetailField('+i+',\'name\',this.value)"></td>'
+      + '<td><input type="number" style="margin:0;width:70px;" value="'+it.qty+'" oninput="updateDetailField('+i+',\'qty\',this.value)"></td>'
+      + '<td><input type="number" style="margin:0;width:100px;" value="'+it.unitPrice+'" oninput="updateDetailField('+i+',\'unitPrice\',this.value)"></td>'
+      + '<td><input type="number" style="margin:0;width:60px;" value="'+it.taxRate+'" oninput="updateDetailField('+i+',\'taxRate\',this.value)"></td>'
+      + '<td><input type="date" style="margin:0;min-width:130px;" value="'+it.dueDate+'" oninput="updateDetailField('+i+',\'dueDate\',this.value)"></td>'
+      + '<td id="row-amount-'+i+'" style="white-space:nowrap;">'+formatYen(amount)+'</td>'
+      + '<td><button class="btn danger small" onclick="removeDetailRow('+i+')">削除</button></td>'
+      + '</tr>';
+  }).join('');
+  renderTotalsOnly();
+}
+function renderTotalsOnly(){
+  const t = computeTotals(form.items, state.config.roundMode);
+  let html = '';
+  t.breakdown.forEach(function(b){
+    html += '<div class="line"><span>小計（税率'+b.rate+'%）</span><span>'+formatYen(b.sub)+'</span></div>';
+    html += '<div class="line"><span>消費税（'+b.rate+'%）</span><span>'+formatYen(b.tax)+'</span></div>';
+  });
+  html += '<div class="line grand"><span>合計</span><span>'+formatYen(t.total)+'</span></div>';
+  document.getElementById('form-total-box').innerHTML = html;
+}
+
+async function submitOrder(){
+  const client = document.getElementById('f-client').value.trim();
+  if(!client){ toast('取引先名を入力してください。'); return; }
+  const validItems = form.items.filter(function(it){ return it.name && Number(it.qty) > 0; });
+  if(validItems.length === 0){ toast('品名・数量が入力された明細を1行以上入力してください。'); return; }
+
+  const dept = document.getElementById('f-dept-select').style.display !== 'none' ? document.getElementById('f-dept-select').value : document.getElementById('f-dept-text').value;
+  const staff = document.getElementById('f-staff').value;
+  const freeValue = document.getElementById('f-free-text').value;
+
+  const body = {
+    action:'submitOrder',
+    client: client,
+    clientContact: document.getElementById('f-clientContact').value.trim(),
+    dept: dept,
+    staff: staff,
+    deliveryPlace: document.getElementById('f-deliveryPlace').value.trim(),
+    terms: document.getElementById('f-terms').value.trim(),
+    memo: document.getElementById('f-memo').value.trim(),
+    freeValue: freeValue,
+    items: validItems.map(function(it){
+      return { pin: it.pin, name: it.name, qty: it.qty, unitPrice: it.unitPrice, taxRate: it.taxRate, dueDate: it.dueDate };
+    })
+  };
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '送信中...';
+  try{
+    const res = await gasPost(body);
+    if(res.ok){
+      const contactVal = document.getElementById('f-contact').value;
+      const record = {
+        docNo: res.docNo, issueDate: res.issueDate, client: client,
+        clientContact: body.clientContact, company: state.config.companyName,
+        dept: dept, staff: staff, contact: contactVal, deliveryPlace: body.deliveryPlace, terms: body.terms,
+        memo: body.memo, freeValue: freeValue,
+        items: validItems.map(function(it){ return { pin:it.pin, name:it.name, qty:Number(it.qty)||0, unitPrice:Number(it.unitPrice)||0, taxRate:Number(it.taxRate)||0, amount:(Number(it.qty)||0)*(Number(it.unitPrice)||0), dueDate:it.dueDate }; })
+      };
+      addCandidate(state.clients, client);
+      addCandidate(state.freeValues, freeValue);
+      printReturnScreen = 'screen-home';
+      renderPrintScreen(record);
+      showScreen('screen-print');
+      toast('発注書を作成しました：' + res.docNo);
+    } else {
+      toast('送信に失敗しました：' + (res.error||''), true);
+    }
+  }catch(err){
+    toast('通信エラーが発生しました。', true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'この内容で発注書を作成する';
+  }
+}
+
+// ================== 印刷画面 ==================
+function backFromPrint(){ showScreen(printReturnScreen); }
+
+// 二重発注防止：印刷ボタンを押すたびにGASへ確認し、初回は記録するだけ、
+// 2回目以降は「既に印刷済み」の警告を出してから続行するか確認する
+async function checkAndPrint(){
+  if(!lastPrintRecord){ window.print(); return; }
+  try{
+    const res = await gasPost({ action:'checkPrint', docNo: lastPrintRecord.docNo });
+    if(res.ok && res.alreadyPrinted){
+      const proceed = confirm('この発注書は既に '+res.printedAt+' に印刷済みです。二重発注にご注意ください。続行しますか？');
+      if(!proceed) return;
+    }
+    window.print();
+  }catch(err){
+    window.print();
+  }
+}
+
+// 直前に表示していた発注書の内容（取引先・明細等）を引き継いだまま、
+// 新規作成フォームを開く。書類番号・発行日・初回印刷日時は引き継がない
+function duplicateFromRecord(){
+  if(!lastPrintRecord) return;
+  const r = lastPrintRecord;
+  openCreate();
+  document.getElementById('f-client').value = r.client || '';
+  document.getElementById('f-clientContact').value = r.clientContact || '';
+  document.getElementById('f-deliveryPlace').value = r.deliveryPlace || '';
+  if(r.terms) document.getElementById('f-terms').value = r.terms;
+  document.getElementById('f-memo').value = r.memo || '';
+  document.getElementById('f-free-text').value = r.freeValue || '';
+
+  const deptSelect = document.getElementById('f-dept-select');
+  const deptText = document.getElementById('f-dept-text');
+  if(deptSelect.style.display !== 'none'){ deptSelect.value = r.dept || ''; }
+  else { deptText.value = r.dept || ''; }
+
+  document.getElementById('f-staff').value = r.staff || '';
+  onStaffChange();
+
+  form.items = (r.items || []).map(function(it){
+    return { pin: it.pin||'', name: it.name||'', qty: it.qty||1, unitPrice: it.unitPrice||0, taxRate: (it.taxRate!=null && it.taxRate!=='') ? it.taxRate : state.config.taxDefault, dueDate: it.dueDate||'' };
+  });
+  if(form.items.length===0){ form.items.push({ pin:'', name:'', qty:1, unitPrice:0, taxRate: state.config.taxDefault, dueDate:'' }); }
+  renderDetailTable();
+
+  toast('過去の発注書の内容を複製しました。内容を確認して送信してください。');
+}
+
+function renderPrintScreen(record){
+  lastPrintRecord = record;
+  document.getElementById('print-title').textContent = printReturnScreen === 'screen-home' ? '✅ 発注書を作成しました' : '📄 発注書（再印刷）';
+  const cfg = state.config;
+  const t = computeTotals(record.items, cfg.roundMode);
+
+  let itemsHtml = record.items.map(function(it){
+    return '<tr>'
+      + '<td>'+escapeHtml(it.pin)+'</td>'
+      + '<td>'+escapeHtml(it.name)+'</td>'
+      + '<td class="num">'+it.qty+'</td>'
+      + '<td class="num">'+formatYen(it.unitPrice)+'</td>'
+      + '<td class="num">'+it.taxRate+'%</td>'
+      + '<td class="num">'+formatYen(it.amount)+'</td>'
+      + '</tr>';
+  }).join('');
+
+  let totalHtml = '';
+  t.breakdown.forEach(function(b){
+    totalHtml += '<div class="line"><span>小計（税率'+b.rate+'%対象）</span><span>'+formatYen(b.sub)+'</span></div>';
+    totalHtml += '<div class="line"><span>消費税（'+b.rate+'%）</span><span>'+formatYen(b.tax)+'</span></div>';
+  });
+  totalHtml += '<div class="line grand"><span>合計</span><span>'+formatYen(t.total)+'</span></div>';
+
+  const freeLine = (cfg.freePrint === '印字する' && record.freeValue)
+    ? '<div class="line"><b>'+escapeHtml(cfg.freeLabel)+'</b><span>'+escapeHtml(record.freeValue)+'</span></div>' : '';
+
+  document.getElementById('doc-sheet').innerHTML =
+    '<h2>発注書</h2>'
+    + '<div class="doc-topline"><span>書類番号：'+escapeHtml(record.docNo)+'</span><span>発行日：'+escapeHtml(record.issueDate)+'</span></div>'
+    + '<div class="doc-grid">'
+    +   '<div>'
+    +     '<div class="doc-client">'+escapeHtml(record.client)+' 御中</div>'
+    +     (record.clientContact ? '<div class="val">'+escapeHtml(record.clientContact)+' 様</div>' : '')
+    +   '</div>'
+    +   '<div class="doc-block">'
+    +     '<b>発行者</b>'
+    +     '<div class="val">'+escapeHtml(record.company)+'</div>'
+    +     (record.dept ? '<div class="val">'+escapeHtml(record.dept)+'</div>' : '')
+    +     (record.staff ? '<div class="val">担当：'+escapeHtml(record.staff)+'</div>' : '')
+    +     (record.contact ? '<div class="val">'+escapeHtml(record.contact)+'</div>' : '')
+    +   '</div>'
+    + '</div>'
+    + '<table class="doc-items"><thead><tr><th>品番</th><th>品名</th><th>数量</th><th>単価</th><th>税率</th><th>金額</th></tr></thead><tbody>'+itemsHtml+'</tbody></table>'
+    + '<div class="doc-total-box">'+totalHtml+'</div>'
+    + '<div class="doc-cond">'
+    +   (record.deliveryPlace ? '<div class="line"><b>納品場所</b><span>'+escapeHtml(record.deliveryPlace)+'</span></div>' : '')
+    +   (record.terms ? '<div class="line"><b>支払条件</b><span>'+escapeHtml(record.terms)+'</span></div>' : '')
+    +   (record.memo ? '<div class="line"><b>備考</b><span>'+escapeHtml(record.memo)+'</span></div>' : '')
+    +   freeLine
+    + '</div>';
+}
+
+// ================== ダッシュボード ==================
+async function openDashboard(){
+  showScreen('screen-dashboard');
+  document.getElementById('dash-content').innerHTML = '<p class="note">読み込み中...</p>';
+  try{
+    const res = await gasGet({ action:'getDashboardData' });
+    if(!res.ok){ toast('取得に失敗しました：' + (res.error||''), true); return; }
+    dash = res;
+    dashFilter = { staff:'', from:'', to:'', status:'', q:'' };
+    dashFilterArrival = { q:'' };
+    dashFilterHandover = { q:'' };
+    dashFilterAlerts = { staff:'' };
+    currentDashTab = 'arrival';
+    renderDashboard();
+  }catch(err){
+    toast('通信エラーが発生しました。', true);
+  }
+}
+function buildHMap(headers){
+  const m = {}; headers.forEach(function(h){ m[h.docNo]=h; }); return m;
+}
+function buildAlerts(headers, details){
+  const hMap = buildHMap(headers);
+  const today = todayStr();
+  const alerts = [];
+  details.forEach(function(d){
+    const h = hMap[d.docNo];
+    if(!h) return;
+    const status = statusOf(d);
+    if(d.dueDate && d.dueDate < today && status==='到着待ち'){
+      alerts.push({ docNo:d.docNo, client:h.client, staff:h.staff||'', name:d.name, qty:d.qty, amount:d.amount, base:d.dueDate, days: daysBetween(d.dueDate, today) });
+    }
+  });
+  alerts.sort(function(a,b){ return b.days-a.days; });
+  return alerts;
+}
+function buildRows(headers, details){
+  const hMap = buildHMap(headers);
+  return details.map(function(d){
+    const h = hMap[d.docNo] || {};
+    return Object.assign({}, d, {
+      issueDate: h.issueDate||'', client: h.client||'', staff: h.staff||'', contact: h.contact||'',
+      dept: h.dept||'', deliveryPlace: h.deliveryPlace||'',
+      status: statusOf(d)
+    });
+  });
+}
+function filterRows(rows, f){
+  return rows.filter(function(r){
+    if(f.staff && r.staff!==f.staff) return false;
+    if(f.from && r.issueDate < f.from) return false;
+    if(f.to && r.issueDate > f.to) return false;
+    if(f.status && r.status!==f.status) return false;
+    if(f.q){
+      const q = f.q.toLowerCase();
+      const hay = [r.client, r.name, r.docNo].join(' ').toLowerCase();
+      if(hay.indexOf(q)===-1) return false;
+    }
+    return true;
+  });
+}
+
+function renderDashboard(){
+  const headers = dash.headers, details = dash.details;
+  const alerts = buildAlerts(headers, details);
+  const staffNames = Array.from(new Set(headers.map(function(h){ return h.staff; }).filter(Boolean))).sort();
+
+  let html = '<div class="dash-tabs no-print">'
+    + '<button class="dash-tab-btn'+(currentDashTab==='arrival'?' active':'')+'" data-tab="arrival" onclick="switchDashTab(\'arrival\')">📦 到着待ち（荷受チェック）</button>'
+    + '<button class="dash-tab-btn'+(currentDashTab==='handover'?' active':'')+'" data-tab="handover" onclick="switchDashTab(\'handover\')">🤝 受渡待ち（受渡チェック）</button>'
+    + '<button class="dash-tab-btn'+(currentDashTab==='alerts'?' active':'')+'" data-tab="alerts" onclick="switchDashTab(\'alerts\')">⚠️ 納期遅延一覧（'+alerts.length+'）</button>'
+    + '<button class="dash-tab-btn'+(currentDashTab==='list'?' active':'')+'" data-tab="list" onclick="switchDashTab(\'list\')">📋 全品目一覧</button>'
+    + '</div>';
+
+  // ---- パネル1：到着待ち（荷受チェック） ----
+  html += '<div class="dash-panel'+(currentDashTab==='arrival'?' active':'')+'" data-panel="arrival">';
+  html += '<div class="card"><h2>📦 到着待ち（荷受チェック）</h2>';
+  html += '<p class="note">荷物が届いたら検索して「到着を記録」を押してください。スプレッドシートを開く必要はありません。</p>';
+  html += '<div class="filter-grid">';
+  html += '<div><label class="field-label">検索</label><input type="text" id="arr-q" value="'+escapeAttr(dashFilterArrival.q)+'" placeholder="取引先名・品名・書類番号・担当者" oninput="onArrivalFilterChange()"></div>';
+  html += '</div>';
+  html += '<p class="step-note" id="arr-count"></p>';
+  html += '<div id="arr-overdue-note"></div>';
+  html += '<div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>書類番号</th><th>取引先名</th><th>品名</th><th>数量</th><th>担当者</th><th>部署名</th><th>納品場所</th><th>納期</th><th>操作</th></tr></thead><tbody id="arr-tbody"></tbody></table></div>';
+  html += '</div>';
+  html += '</div>';
+
+  // ---- パネル2：受渡待ち（受渡チェック） ----
+  html += '<div class="dash-panel'+(currentDashTab==='handover'?' active':'')+'" data-panel="handover">';
+  html += '<div class="card"><h2>🤝 受渡待ち（受渡チェック）</h2>';
+  html += '<p class="note">担当者へ引き渡したら検索して「受渡を記録」を押してください。着荷から'+dash.config.staleDays+'日以上経過している行は経過日数を強調表示します。</p>';
+  html += '<div class="filter-grid">';
+  html += '<div><label class="field-label">検索</label><input type="text" id="hnd-q" value="'+escapeAttr(dashFilterHandover.q)+'" placeholder="取引先名・品名・書類番号・担当者" oninput="onHandoverFilterChange()"></div>';
+  html += '</div>';
+  html += '<p class="step-note" id="hnd-count"></p>';
+  html += '<div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>書類番号</th><th>取引先名</th><th>品名</th><th>数量</th><th>担当者</th><th>部署名</th><th>納品場所</th><th>着荷日</th><th>経過日数</th><th>操作</th></tr></thead><tbody id="hnd-tbody"></tbody></table></div>';
+  html += '</div>';
+  html += '</div>';
+
+  // ---- パネル3：納期遅延一覧 ----
+  html += '<div class="dash-panel'+(currentDashTab==='alerts'?' active':'')+'" data-panel="alerts">';
+  html += '<div class="card"><h2>納期遅延一覧（納期超過）</h2>';
+  html += '<div class="filter-grid">';
+  html += '<div><label class="field-label">担当者</label><select id="alt-staff" onchange="onAlertsFilterChange()"><option value="">すべて</option>' + staffNames.map(function(s){ return '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>'; }).join('') + '</select></div>';
+  html += '</div>';
+  html += '<p class="step-note" id="alt-count"></p>';
+  html += '<div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>書類番号</th><th>取引先名</th><th>品名</th><th>数量</th><th>担当者</th><th>金額</th><th>納期</th><th>経過日数</th></tr></thead><tbody id="alt-tbody"></tbody></table></div>';
+  html += '</div>';
+  html += '</div>';
+
+  // ---- パネル4：全品目一覧（フィルタ） ----
+  html += '<div class="dash-panel'+(currentDashTab==='list'?' active':'')+'" data-panel="list">';
+  html += '<div class="card"><h2>全品目一覧</h2>';
+  html += '<p class="note">💡 書類番号をクリックすると印刷画面が開きます（再印刷・複製して新規作成に利用できます）。</p>';
+  html += '<div class="filter-grid">';
+  html += '<div><label class="field-label">担当者</label><select id="flt-staff" onchange="onFilterChange()"><option value="">すべて</option>' + staffNames.map(function(s){ return '<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>'; }).join('') + '</select></div>';
+  html += '<div><label class="field-label">発行日（から）</label><input type="date" id="flt-from" onchange="onFilterChange()"></div>';
+  html += '<div><label class="field-label">発行日（まで）</label><input type="date" id="flt-to" onchange="onFilterChange()"></div>';
+  html += '<div><label class="field-label">ステータス</label><select id="flt-status" onchange="onFilterChange()"><option value="">すべて</option><option>到着待ち</option><option>受渡待ち</option><option>受渡済み</option></select></div>';
+  html += '<div><label class="field-label">検索</label><input type="text" id="flt-q" placeholder="取引先名・品名・書類番号" oninput="onFilterChange()"></div>';
+  html += '</div>';
+  html += '<p class="step-note" id="result-count"></p>';
+  html += '<div class="tbl-scroll"><table class="data-tbl"><thead><tr><th>書類番号</th><th>発行日</th><th>取引先名</th><th>担当者</th><th>品番</th><th>品名</th><th>数量</th><th>単価</th><th>金額</th><th>納期</th><th>ステータス</th></tr></thead><tbody id="full-list-tbody"></tbody></table></div>';
+  html += '</div>';
+  html += '</div>';
+
+  document.getElementById('dash-content').innerHTML = html;
+  renderArrivalList();
+  renderHandoverList();
+  renderAlertsList();
+  renderFullList();
+}
+function switchDashTab(tab){
+  currentDashTab = tab;
+  document.querySelectorAll('.dash-tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.tab===tab); });
+  document.querySelectorAll('.dash-panel').forEach(function(p){ p.classList.toggle('active', p.dataset.panel===tab); });
+}
+function compareDueDateAsc(aStr, bStr){
+  if(!aStr && !bStr) return 0;
+  if(!aStr) return 1;
+  if(!bStr) return -1;
+  return aStr.localeCompare(bStr);
+}
+function filterByStageQuery(rows, q){
+  if(!q) return rows;
+  const qq = q.toLowerCase();
+  return rows.filter(function(r){
+    const hay = [r.client, r.name, r.docNo, r.staff].join(' ').toLowerCase();
+    return hay.indexOf(qq)!==-1;
+  });
+}
+function buildArrivalRows(headers, details, opts){
+  const rows = buildRows(headers, details).filter(function(r){ return r.status==='到着待ち'; });
+  const filtered = filterByStageQuery(rows, opts.q);
+  filtered.sort(function(a,b){ return compareDueDateAsc(a.dueDate, b.dueDate); });
+  return filtered;
+}
+function buildHandoverRows(headers, details, opts){
+  const rows = buildRows(headers, details).filter(function(r){ return r.status==='受渡待ち'; });
+  const filtered = filterByStageQuery(rows, opts.q);
+  filtered.sort(function(a,b){ return (a.arrivedDate||'').localeCompare(b.arrivedDate||''); });
+  return filtered;
+}
+function renderArrivalList(){
+  const rows = buildArrivalRows(dash.headers, dash.details, dashFilterArrival);
+  const today = todayStr();
+  const overdueCount = rows.filter(function(r){ return r.dueDate && r.dueDate < today; }).length;
+  document.getElementById('arr-count').textContent = rows.length + '件表示中';
+  document.getElementById('arr-overdue-note').innerHTML = overdueCount>0
+    ? '<div class="warn-banner">⚠️ 納期を超過している品目が'+overdueCount+'件あります</div>' : '';
+  document.getElementById('arr-tbody').innerHTML = rows.map(function(r){
+    const overdue = r.dueDate && r.dueDate < today;
+    const dueCell = overdue ? '<span class="badge danger">⚠️ '+escapeHtml(r.dueDate)+'</span>' : escapeHtml(r.dueDate);
+    return '<tr'+(overdue?' class="row-danger"':'')+'>'
+      + '<td class="doc-link" onclick="openPrintFromDashboard(\''+escapeAttr(r.docNo)+'\')">'+escapeHtml(r.docNo)+'</td>'
+      + '<td>'+escapeHtml(r.client)+'</td>'
+      + '<td>'+escapeHtml(r.name)+'</td>'
+      + '<td>'+r.qty+'</td>'
+      + '<td><b>'+escapeHtml(r.staff)+'</b></td>'
+      + '<td>'+escapeHtml(r.dept)+'</td>'
+      + '<td>'+escapeHtml(r.deliveryPlace)+'</td>'
+      + '<td>'+dueCell+'</td>'
+      + '<td><button class="btn small" onclick="doMarkArrived(this,\''+escapeAttr(r.docNo)+'\','+r.no+',\''+escapeAttr(r.name)+'\')">📦 到着を記録</button></td>'
+      + '</tr>';
+  }).join('');
+}
+function renderHandoverList(){
+  const rows = buildHandoverRows(dash.headers, dash.details, dashFilterHandover);
+  document.getElementById('hnd-count').textContent = rows.length + '件表示中';
+  const today = todayStr();
+  const staleDays = (dash.config && dash.config.staleDays) || 1;
+  document.getElementById('hnd-tbody').innerHTML = rows.map(function(r){
+    const days = r.arrivedDate ? daysBetween(r.arrivedDate, today) : 0;
+    const stale = days>=staleDays;
+    const daysCell = stale ? '<span class="badge danger">⚠️ '+days+'日</span>' : days+'日';
+    return '<tr'+(stale?' class="row-danger"':'')+'>'
+      + '<td class="doc-link" onclick="openPrintFromDashboard(\''+escapeAttr(r.docNo)+'\')">'+escapeHtml(r.docNo)+'</td>'
+      + '<td>'+escapeHtml(r.client)+'</td>'
+      + '<td>'+escapeHtml(r.name)+'</td>'
+      + '<td>'+r.qty+'</td>'
+      + '<td><b>'+escapeHtml(r.staff)+'</b></td>'
+      + '<td>'+escapeHtml(r.dept)+'</td>'
+      + '<td>'+escapeHtml(r.deliveryPlace)+'</td>'
+      + '<td>'+escapeHtml(r.arrivedDate)+'</td>'
+      + '<td>'+daysCell+'</td>'
+      + '<td><button class="btn small" onclick="doMarkHandedOver(this,\''+escapeAttr(r.docNo)+'\','+r.no+',\''+escapeAttr(r.name)+'\')">🤝 受渡を記録</button></td>'
+      + '</tr>';
+  }).join('');
+}
+function onArrivalFilterChange(){
+  dashFilterArrival.q = document.getElementById('arr-q').value;
+  renderArrivalList();
+}
+function onHandoverFilterChange(){
+  dashFilterHandover.q = document.getElementById('hnd-q').value;
+  renderHandoverList();
+}
+function buildAlertRows(headers, details, opts){
+  const rows = buildAlerts(headers, details);
+  if(!opts.staff) return rows;
+  return rows.filter(function(a){ return a.staff===opts.staff; });
+}
+function renderAlertsList(){
+  const rows = buildAlertRows(dash.headers, dash.details, dashFilterAlerts);
+  document.getElementById('alt-count').textContent = rows.length + '件表示中';
+  document.getElementById('alt-tbody').innerHTML = rows.map(function(a){
+    return '<tr>'
+      + '<td class="doc-link" onclick="openPrintFromDashboard(\''+escapeAttr(a.docNo)+'\')">'+escapeHtml(a.docNo)+'</td>'
+      + '<td>'+escapeHtml(a.client)+'</td>'
+      + '<td>'+escapeHtml(a.name)+'</td>'
+      + '<td>'+a.qty+'</td>'
+      + '<td><b>'+escapeHtml(a.staff)+'</b></td>'
+      + '<td>'+formatYen(a.amount)+'</td>'
+      + '<td>'+a.base+'</td>'
+      + '<td><span class="badge danger">⚠️ '+a.days+'日</span></td>'
+      + '</tr>';
+  }).join('');
+}
+function onAlertsFilterChange(){
+  dashFilterAlerts.staff = document.getElementById('alt-staff').value;
+  renderAlertsList();
+}
+async function doMarkArrived(btn, docNo, no, name){
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '記録中...';
+  try{
+    const res = await gasPost({ action:'markArrived', docNo:docNo, no:no });
+    if(!res.ok){ toast('記録に失敗しました：'+(res.error||''), true); btn.disabled=false; btn.textContent=orig; return; }
+    if(res.already){
+      toast('既に到着記録済みです（'+res.date+'）。');
+    } else {
+      showUndoToast('「'+name+'」の到着を記録しました。', { type:'arrived', docNo:docNo, no:no });
+    }
+    await refreshDashboardSilently();
+  }catch(err){
+    toast('通信エラーが発生しました。', true);
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+async function doMarkHandedOver(btn, docNo, no, name){
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '記録中...';
+  try{
+    const res = await gasPost({ action:'markHandedOver', docNo:docNo, no:no });
+    if(!res.ok){ toast('記録に失敗しました：'+(res.error||''), true); btn.disabled=false; btn.textContent=orig; return; }
+    if(res.already){
+      toast('既に受渡記録済みです（'+res.date+'）。');
+    } else {
+      showUndoToast('「'+name+'」の受渡を記録しました。', { type:'handed', docNo:docNo, no:no });
+    }
+    await refreshDashboardSilently();
+  }catch(err){
+    toast('通信エラーが発生しました。', true);
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+function showUndoToast(msg, payload){
+  lastAction = payload;
+  document.getElementById('undo-toast-msg').textContent = msg;
+  const btn = document.getElementById('undo-toast-btn');
+  btn.disabled = false; btn.textContent = '元に戻す';
+  document.getElementById('undo-toast').classList.add('show');
+}
+function hideUndoToast(){
+  document.getElementById('undo-toast').classList.remove('show');
+  lastAction = null;
+}
+async function performUndo(){
+  if(!lastAction) return;
+  const payload = lastAction;
+  const btn = document.getElementById('undo-toast-btn');
+  btn.disabled = true; btn.textContent = '取り消し中...';
+  try{
+    const res = await gasPost({
+      action:'undoMark',
+      docNo: payload.docNo,
+      no: payload.no,
+      field: payload.type==='arrived' ? '着荷日' : '受渡日'
+    });
+    if(!res.ok){ toast('取り消しに失敗しました：'+(res.error||''), true); btn.disabled=false; btn.textContent='元に戻す'; return; }
+    hideUndoToast();
+    toast('取り消しました。');
+    await refreshDashboardSilently();
+  }catch(err){
+    toast('通信エラーが発生しました。', true);
+    btn.disabled = false; btn.textContent = '元に戻す';
+  }
+}
+async function refreshDashboardSilently(){
+  try{
+    const res = await gasGet({ action:'getDashboardData' });
+    if(res.ok){ dash = res; renderDashboard(); }
+  }catch(err){}
+}
+function onFilterChange(){
+  dashFilter.staff = document.getElementById('flt-staff').value;
+  dashFilter.from = document.getElementById('flt-from').value;
+  dashFilter.to = document.getElementById('flt-to').value;
+  dashFilter.status = document.getElementById('flt-status').value;
+  dashFilter.q = document.getElementById('flt-q').value;
+  renderFullList();
+}
+function renderFullList(){
+  const rows = filterRows(buildRows(dash.headers, dash.details), dashFilter);
+  document.getElementById('result-count').textContent = rows.length + '件表示中';
+  const tbody = document.getElementById('full-list-tbody');
+  tbody.innerHTML = rows.map(function(r){
+    return '<tr>'
+      + '<td class="doc-link" onclick="openPrintFromDashboard(\''+escapeAttr(r.docNo)+'\')">'+escapeHtml(r.docNo)+'</td>'
+      + '<td>'+escapeHtml(r.issueDate)+'</td>'
+      + '<td>'+escapeHtml(r.client)+'</td>'
+      + '<td>'+escapeHtml(r.staff)+'</td>'
+      + '<td>'+escapeHtml(r.pin)+'</td>'
+      + '<td>'+escapeHtml(r.name)+'</td>'
+      + '<td>'+r.qty+'</td>'
+      + '<td>'+formatYen(r.unitPrice)+'</td>'
+      + '<td>'+formatYen(r.amount)+'</td>'
+      + '<td>'+escapeHtml(r.dueDate)+'</td>'
+      + '<td>'+statusBadge(r.status)+'</td>'
+      + '</tr>';
+  }).join('');
+}
+function openPrintFromDashboard(docNo){
+  const h = dash.headers.filter(function(x){ return x.docNo===docNo; })[0];
+  if(!h) return;
+  const items = dash.details.filter(function(d){ return d.docNo===docNo; }).map(function(d){
+    return { pin:d.pin, name:d.name, qty:d.qty, unitPrice:d.unitPrice, taxRate:d.taxRate, amount:d.amount, dueDate:d.dueDate };
+  });
+  const record = Object.assign({}, h, { items: items });
+  printReturnScreen = 'screen-dashboard';
+  renderPrintScreen(record);
+  showScreen('screen-print');
+}
+
+// ================== escape ==================
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function escapeAttr(s){ return escapeHtml(s).replace(/'/g,"\\'"); }
+
+function copyGasCode(){
+  const box = document.getElementById('gas-code-box');
+  navigator.clipboard.writeText(box.value||'').then(function(){ toast('コピーしました'); });
+}
+</script>
+</body>
+</html>
