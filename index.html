@@ -1194,7 +1194,7 @@ function renderHomeInfo(){
   const c = state.config;
   let html = '';
   if(isDemoMode()){
-    html += '<div class="warn-banner">⚠️ これはデモ環境です。入力内容は毎日リセットされます。実際の取引先名・個人情報等は入力しないでください。</div>';
+    html += '<div class="warn-banner">⚠️ これはデモ環境です。入力内容は毎日自動でリセットされるほか、下のボタンでいつでも手動リセットもできます。実際の取引先名・個人情報等は入力しないでください。</div>';
     html += '<button class="btn secondary small" id="demo-reset-btn" style="display:block;margin-bottom:10px;" onclick="manualResetDemo()">🔁 デモデータをリセット</button>';
   }
   if(!c.companyName){
