@@ -1390,6 +1390,7 @@ function renderPrintScreen(record){
       + '<td class="num">'+it.qty+'</td>'
       + '<td class="num">'+formatYen(it.unitPrice)+'</td>'
       + '<td class="num">'+it.taxRate+'%</td>'
+      + '<td class="num">'+escapeHtml(it.dueDate||'')+'</td>'
       + '<td class="num">'+formatYen(it.amount)+'</td>'
       + '</tr>';
   }).join('');
@@ -1420,7 +1421,7 @@ function renderPrintScreen(record){
     +     (record.contact ? '<div class="val">'+escapeHtml(record.contact)+'</div>' : '')
     +   '</div>'
     + '</div>'
-    + '<table class="doc-items"><thead><tr><th>品番</th><th>品名</th><th>数量</th><th>単価</th><th>税率</th><th>金額</th></tr></thead><tbody>'+itemsHtml+'</tbody></table>'
+    + '<table class="doc-items"><thead><tr><th>品番</th><th>品名</th><th>数量</th><th>単価</th><th>税率</th><th>納期</th><th>金額</th></tr></thead><tbody>'+itemsHtml+'</tbody></table>'
     + '<div class="doc-total-box">'+totalHtml+'</div>'
     + '<div class="doc-cond">'
     +   (record.deliveryPlace ? '<div class="line"><b>納品場所</b><span>'+escapeHtml(record.deliveryPlace)+'</span></div>' : '')
@@ -1507,7 +1508,7 @@ function renderDashboard(){
   // ---- パネル1：到着待ち（荷受チェック） ----
   html += '<div class="dash-panel'+(currentDashTab==='arrival'?' active':'')+'" data-panel="arrival">';
   html += '<div class="card"><h2>📦 到着待ち（荷受チェック）</h2>';
-  html += '<p class="note">荷物が届いたら検索して「到着を記録」を押してください。スプレッドシートを開く必要はありません。</p>';
+  html += '<p class="note">荷物が届いたら、対応する発注内容の「到着を記録」ボタンを押してください。発注内容が受渡待ち（受渡チェック）タブに移動します。スプレッドシートを直接開く必要はありません。</p>';
   html += '<div class="filter-grid">';
   html += '<div><label class="field-label">検索</label><input type="text" id="arr-q" value="'+escapeAttr(dashFilterArrival.q)+'" placeholder="取引先名・品名・書類番号・担当者" oninput="onArrivalFilterChange()"></div>';
   html += '</div>';
@@ -1520,7 +1521,8 @@ function renderDashboard(){
   // ---- パネル2：受渡待ち（受渡チェック） ----
   html += '<div class="dash-panel'+(currentDashTab==='handover'?' active':'')+'" data-panel="handover">';
   html += '<div class="card"><h2>🤝 受渡待ち（受渡チェック）</h2>';
-  html += '<p class="note">自分宛ての荷物を受け取りに来たら、検索して「受渡を記録」を押してください。着荷から'+dash.config.staleDays+'日以上経過している行は経過日数を強調表示します。</p>';
+  html += '<p class="note">自分宛の荷物が受渡待ちになったら、速やかに受け取ってください。受取時に対応する発注内容の「受渡を記録」ボタンを押してください。発注内容が消し込まれます。スプレッドシートを直接開く必要はありません。</p>';
+  html += '<p class="note">受渡待ちになってから'+dash.config.staleDays+'日以上経過している行は経過日数を強調表示します。</p>';
   html += '<div class="filter-grid">';
   html += '<div><label class="field-label">検索</label><input type="text" id="hnd-q" value="'+escapeAttr(dashFilterHandover.q)+'" placeholder="取引先名・品名・書類番号・担当者" oninput="onHandoverFilterChange()"></div>';
   html += '</div>';
