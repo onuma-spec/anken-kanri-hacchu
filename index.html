@@ -82,6 +82,9 @@
   /* 全体像（3レーン図） */
   .swimlane{display:grid;grid-template-columns:1.1fr 1fr 0.5fr 1fr;gap:8px 6px;margin-top:10px;min-width:560px;}
   .swimlane .lane-head{font-size:0.72rem;font-weight:700;color:var(--muted);text-align:center;padding-bottom:6px;border-bottom:2px solid var(--border);}
+  .swimlane .lane-head.lh-flow{color:var(--muted);border-bottom-color:var(--muted);}
+  .swimlane .lane-head.lh-html{color:var(--accent);border-bottom-color:var(--accent);}
+  .swimlane .lane-head.lh-sheet{color:var(--ok);border-bottom-color:var(--ok);}
   .swimlane .cell{border-radius:8px;padding:8px 10px;font-size:0.78rem;text-align:center;border:1.5px solid var(--border);background:var(--bg);display:flex;flex-direction:column;justify-content:center;}
   .swimlane .cell.tool{border-color:var(--accent);background:var(--ok-bg);font-weight:600;}
   .swimlane .cell.empty{border-style:dashed;color:var(--muted);background:transparent;font-weight:400;}
@@ -148,10 +151,9 @@
     <p class="note">発注書に関する一連の業務を上から時系列に並べ、どこをこのツール（htmlツール／Googleスプレッドシート）が担うかを示しています。点線の空箱は、実際の業務行為そのもの（ツールの外）であることを示します。</p>
     <div class="tbl-scroll" style="max-height:none;">
       <div class="swimlane">
-        <div class="lane-head">業務内容</div>
-        <div class="lane-head">htmlツール</div>
-        <div class="lane-head"></div>
-        <div class="lane-head">Googleスプレッドシート</div>
+        <div class="lane-head lh-flow">業務内容</div>
+        <div class="lane-head lh-html">htmlツール</div>
+        <div class="lane-head lh-sheet" style="grid-column:span 2;">Googleスプレッドシート</div>
 
         <div class="cell step">①発注書作成</div>
         <div class="cell tool">フォーム入力</div>
@@ -176,12 +178,12 @@
     </div>
     <p class="step-note">複数人が発注書を発行していても、荷受担当は荷受場に置いた端末で「到着待ち（荷受チェック）」タブを開けば、届いた荷物がどの発注書のもので誰宛か（担当者名・部署名・納品場所）をその場で確認・記録できます。担当者は「受渡待ち（受渡チェック）」タブを見て自分宛ての荷物が届いたことを確認し、荷受場へ受け取りに来た際に自分で記録します。</p>
     <p class="step-note">①のあとは、いつでもhtmlツールのダッシュボードやGoogleスプレッドシート上のハイライトで進捗・要注意（納期超過）を確認できます。</p>
-    <p class="step-note">htmlツールは全社共通で配布・データはここに保存されません。スプレッドシートは自社のGoogleアカウント内に作成したものを使います。</p>
+    <p class="step-note">htmlツールは全社共通で配布。スプレッドシートは自社のGoogleアカウント内に作成したものを使い、データはこちらにのみ保存されます。</p>
   </div>
 
   <div class="card">
-    <h2>①発注書データの保存先を用意する</h2>
-    <p class="note">発注書の集計先となる、Googleスプレッドシート＋GASスクリプトを準備します（社内で最初に1人が行えばOKです）。</p>
+    <h2>①発注書データの保存先を用意する（社内で最初の1人が行う）</h2>
+    <p class="note">Googleスプレッドシートを、htmlツールとやり取りできるデータ保存先にする作業です。</p>
     <ol class="setup-steps">
       <li>新しいGoogleスプレッドシートを作成する</li>
       <li>メニュー「拡張機能」→「Apps Script」を開く</li>
@@ -884,14 +886,13 @@ function fmtDate_(v, tz) {
   </div>
 
   <div class="card">
-    <h2>②接続を確認する</h2>
-    <p class="note">手順④でデプロイが完了すると、「ウェブアプリ」というラベルの付いたURLが表示された画面が出ます。その右側にあるコピーアイコンをクリックしてURLをコピーし、下の欄に貼り付けてください。</p>
-    <p class="note">その画面を閉じてしまった場合は、スプレッドシートのメニュー「拡張機能」→「Apps Script」を開き直し→右上の「デプロイ」→「デプロイを管理」を開くと、同じURLをもう一度確認できます。</p>
-    <p class="note">URLを下の欄に貼り付けたら、「接続テスト」ボタンを押してください。</p>
+    <h2>②接続を確認する（利用者それぞれが最初に1回行う）</h2>
+    <p class="note">発注書ツールを使う人が、それぞれ自分のブラウザで一度だけ行う作業です。一度つなげば、次回からは自動で接続されます。</p>
+    <p class="note">スプレッドシートのメニュー「拡張機能」→「Apps Script」→右上の「デプロイ」→「デプロイを管理」からウェブアプリURLをコピーして下の欄に貼り付け、「接続」ボタンを押してください。</p>
     <label class="field-label">ウェブアプリURL</label>
     <input type="url" id="input-gas-url" placeholder="https://script.google.com/macros/s/xxxx/exec">
     <p class="step-note" id="connect-status"></p>
-    <button class="btn" onclick="testConnection()">接続テスト</button>
+    <button class="btn" onclick="testConnection()">接続</button>
   </div>
 </div>
 
