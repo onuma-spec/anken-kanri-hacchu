@@ -191,9 +191,13 @@
         デフォルトで入っているコードを全部消し、下のコードを貼り付けて保存する（Ctrl+S）
         <details style="margin-top:8px;">
           <summary style="cursor:pointer;font-weight:600;color:var(--accent);">▶ GASスクリプトのコードを表示・コピーする</summary>
-          <textarea id="gas-code-box" readonly style="width:100%;height:260px;font-family:monospace;font-size:0.75rem;white-space:pre;margin-top:8px;">// ============================================================
+          <textarea id="gas-code-box" readonly style="width:100%;height:260px;font-family:monospace;font-size:0.75rem;white-space:pre;margin-top:8px;">/** @OnlyCurrentDoc */
+// ============================================================
 // 案件管理ツール（発注書）- GASテンプレート
 // ============================================================
+// 先頭の @OnlyCurrentDoc で、権限を「このスプレッドシートだけ」に絞っている
+// （ないと Google ドライブのすべてのスプレッドシートを読み書きできる権限で動く）。
+//
 // 【使い方】
 // 1. 新しいGoogleスプレッドシートを作成する
 // 2. メニュー「拡張機能」→「Apps Script」を開く
@@ -567,6 +571,10 @@ function generateDocNo_(prefix) {
   return base + (&#x27;000&#x27; + next).slice(-3);
 }
 
+// 「=」「+」「-」「@」で始まる文字列はシートに数式として書き込まれるため、先頭に &#x27; を付けて文字列として保存する
+function asText_(v) { return typeof v === &#x27;string&#x27; &amp;&amp; /^[=+\-@]/.test(v) ? &quot;&#x27;&quot; + v : v; }
+function asTextRow_(row) { return row.map(asText_); }
+
 function parseDate_(str) {
   if (!str) return &#x27;&#x27;;
   const parts = String(str).split(&#x27;-&#x27;);
@@ -616,7 +624,7 @@ function submitOrder(body) {
     headerRow[H[&#x27;フリー項目値&#x27;]] = body.freeValue || &#x27;&#x27;;
     headerRow[H[&#x27;初回印刷日時&#x27;]] = &#x27;&#x27;;
 
-    hSh.getRange(hSh.getLastRow() + 1, 1, 1, HEADER_COLS.length).setValues([headerRow]);
+    hSh.getRange(hSh.getLastRow() + 1, 1, 1, HEADER_COLS.length).setValues([asTextRow_(headerRow)]);
     const hRowNum = hSh.getLastRow();
     hSh.getRange(hRowNum, H[&#x27;発行日&#x27;] + 1).setNumberFormat(&#x27;yyyy-mm-dd&#x27;);
 
@@ -637,7 +645,7 @@ function submitOrder(body) {
       row[D[&#x27;納期&#x27;]] = parseDate_(it.dueDate);
       row[D[&#x27;着荷日&#x27;]] = &#x27;&#x27;;
       row[D[&#x27;受渡日&#x27;]] = &#x27;&#x27;;
-      return row;
+      return asTextRow_(row);
     });
 
     if (rows.length &gt; 0) {

@@ -1,6 +1,10 @@
+/** @OnlyCurrentDoc */
 // ============================================================
 // 案件管理ツール（発注書）- GASテンプレート
 // ============================================================
+// 先頭の @OnlyCurrentDoc で、権限を「このスプレッドシートだけ」に絞っている
+// （ないと Google ドライブのすべてのスプレッドシートを読み書きできる権限で動く）。
+//
 // 【使い方】
 // 1. 新しいGoogleスプレッドシートを作成する
 // 2. メニュー「拡張機能」→「Apps Script」を開く
@@ -374,6 +378,10 @@ function generateDocNo_(prefix) {
   return base + ('000' + next).slice(-3);
 }
 
+// 「=」「+」「-」「@」で始まる文字列はシートに数式として書き込まれるため、先頭に ' を付けて文字列として保存する
+function asText_(v) { return typeof v === 'string' && /^[=+\-@]/.test(v) ? "'" + v : v; }
+function asTextRow_(row) { return row.map(asText_); }
+
 function parseDate_(str) {
   if (!str) return '';
   const parts = String(str).split('-');
@@ -423,7 +431,7 @@ function submitOrder(body) {
     headerRow[H['フリー項目値']] = body.freeValue || '';
     headerRow[H['初回印刷日時']] = '';
 
-    hSh.getRange(hSh.getLastRow() + 1, 1, 1, HEADER_COLS.length).setValues([headerRow]);
+    hSh.getRange(hSh.getLastRow() + 1, 1, 1, HEADER_COLS.length).setValues([asTextRow_(headerRow)]);
     const hRowNum = hSh.getLastRow();
     hSh.getRange(hRowNum, H['発行日'] + 1).setNumberFormat('yyyy-mm-dd');
 
@@ -444,7 +452,7 @@ function submitOrder(body) {
       row[D['納期']] = parseDate_(it.dueDate);
       row[D['着荷日']] = '';
       row[D['受渡日']] = '';
-      return row;
+      return asTextRow_(row);
     });
 
     if (rows.length > 0) {
